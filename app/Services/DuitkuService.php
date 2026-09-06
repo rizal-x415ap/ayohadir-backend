@@ -43,6 +43,13 @@ class DuitkuService
             : 'https://api-prod.duitku.com/api/merchant/createInvoice';
     }
 
+    public function getTransactionStatusUrl(): string
+    {
+        return $this->isSandbox()
+            ? 'https://api-sandbox.duitku.com/api/merchant/transactionStatus'
+            : 'https://api-prod.duitku.com/api/merchant/transactionStatus';
+    }
+
     public function getMerchantCode(): string
     {
         return $this->merchantCode;
@@ -107,6 +114,54 @@ class DuitkuService
         }
 
         return $data;
+    }
+
+    /**
+     * Check transaction status directly with Duitku Inquiry API.
+     * Response contains statusCode ('00' = Success, '01' = Pending, '02' = Canceled/Expired).
+     */
+    public function checkTransactionStatus(string $merchantOrderId): ?array
+    {
+        if (!$this->isConfigured()) {
+            return null;
+        }
+
+        $signature = md5($this->merchantCode . $merchantOrderId . $this->apiKey);
+
+        $payload = [
+            'merchantCode' => $this->merchantCode,
+            'merchantOrderId' => $merchantOrderId,
+            'signature' => $signature,
+        ];
+
+        $url = $this->getTransactionStatusUrl();
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->timeout(15)->post($url, $payload);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                Log::info('Duitku checkTransactionStatus success', [
+                    'merchantOrderId' => $merchantOrderId,
+                    'response' => $data,
+                ]);
+                return $data;
+            }
+
+            Log::warning('Duitku checkTransactionStatus non-200 response', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'merchantOrderId' => $merchantOrderId,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Duitku checkTransactionStatus exception: ' . $e->getMessage(), [
+                'merchantOrderId' => $merchantOrderId,
+            ]);
+        }
+
+        return null;
     }
 
     /**

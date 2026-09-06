@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PaymentTransaction;
+use App\Models\Template;
 use App\Models\Wedding;
 use App\Services\PricingService;
 use App\Services\PublishingService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
-
 use Illuminate\Http\Request;
 
 class PublishingController extends Controller
@@ -30,15 +31,27 @@ class PublishingController extends Controller
         $errors = $this->publishingService->validateForPublishing($wedding);
 
         $templateId = $wedding->applied_template_id ?: $wedding->design?->template_id;
-        $template = $templateId ? \App\Models\Template::find($templateId) : null;
-        $user = $request->user();
+        $template = $templateId ? Template::find($templateId) : null;
 
+        $user = $request->user();
         $isPaidTemplate = $template && (int) $template->price > 0;
         $isUnlocked = (bool) $wedding->is_premium_unlocked || ($user && $user->isAdmin());
         $requiresPayment = $isPaidTemplate && !$isUnlocked;
 
         $couponCode = $request->query('coupon');
         $pricing = $this->pricingService->calculate($template ? (int) $template->price : 0, $couponCode);
+
+        // Check for active pending transaction for this wedding
+        $pendingPayment = PaymentTransaction::where('wedding_id', $wedding->id)
+            ->where('user_id', $request->user()->id)
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
+        if ($pendingPayment && $pendingPayment->created_at < now()->subHours(24)) {
+            $pendingPayment->update(['status' => 'expired']);
+            $pendingPayment = null;
+        }
 
         return response()->json([
             'data' => [
@@ -47,6 +60,13 @@ class PublishingController extends Controller
                 'paymentInfo' => [
                     'requiresPayment' => $requiresPayment,
                     'isUnlocked' => $isUnlocked,
+                    'pendingPayment' => $pendingPayment ? [
+                        'merchant_order_id' => $pendingPayment->merchant_order_id,
+                        'amount' => $pendingPayment->amount,
+                        'reference' => $pendingPayment->duitku_reference,
+                        'payment_url' => $pendingPayment->payment_url,
+                        'created_at' => $pendingPayment->created_at ? $pendingPayment->created_at->toIso8601String() : null,
+                    ] : null,
                     'templateId' => $template?->id,
                     'templateName' => $template?->name ?? 'Template Pilihan',
                     'templatePrice' => $template ? (int) $template->price : 0,
@@ -69,7 +89,7 @@ class PublishingController extends Controller
 
         $user = $request->user();
         $templateId = $wedding->applied_template_id ?: $wedding->design?->template_id;
-        $template = $templateId ? \App\Models\Template::find($templateId) : null;
+        $template = $templateId ? Template::find($templateId) : null;
 
         $isPaidTemplate = $template && (int) $template->price > 0;
         $isUnlocked = (bool) $wedding->is_premium_unlocked || ($user && $user->isAdmin());

@@ -106,6 +106,64 @@ class PaymentController extends Controller
             ]);
         }
 
+        // Check if user already has an active pending transaction for this wedding
+        $existingPending = PaymentTransaction::where('wedding_id', $wedding->id)
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
+        if ($existingPending) {
+            $isOverdue = $existingPending->created_at < now()->subHours(24);
+            $forceNew = $request->boolean('force_new');
+
+            // Quick live check with Duitku status API if configured
+            $duitkuStatus = $this->duitkuService->checkTransactionStatus($existingPending->merchant_order_id);
+            $statusCode = $duitkuStatus['statusCode'] ?? null;
+
+            if ($statusCode === '00') {
+                // Payment was already made!
+                $existingPending->update([
+                    'status' => 'paid',
+                    'paid_at' => now(),
+                    'raw_callback' => $duitkuStatus,
+                ]);
+                $wedding->is_premium_unlocked = true;
+                $wedding->save();
+
+                try {
+                    $this->publishingService->publish($wedding);
+                } catch (\Exception $pubEx) {
+                    Log::warning('Auto-publish after check warning: ' . $pubEx->getMessage());
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'is_free' => false,
+                    'already_unlocked' => true,
+                    'message' => 'Tagihan sebelumnya telah lunas terbayar.',
+                ]);
+            } elseif ($statusCode === '02' || $isOverdue) {
+                // Expired / Canceled in Duitku
+                $existingPending->update(['status' => 'expired', 'raw_callback' => $duitkuStatus]);
+            } elseif (!$forceNew && $existingPending->amount === $pricing['final_amount'] && !empty($existingPending->duitku_reference)) {
+                // REUSE EXISTING PENDING INVOICE without creating duplicate
+                return response()->json([
+                    'success' => true,
+                    'reused' => true,
+                    'reference' => $existingPending->duitku_reference,
+                    'payment_url' => $existingPending->payment_url,
+                    'merchant_order_id' => $existingPending->merchant_order_id,
+                    'duitku_js_url' => $this->duitkuService->getJsUrl(),
+                    'pricing' => $pricing,
+                    'message' => 'Melanjutkan tagihan pembayaran yang masih aktif.',
+                ]);
+            } else {
+                // User explicitly requested a new invoice or coupon changed
+                $existingPending->update(['status' => 'cancelled']);
+            }
+        }
+
         // Generate unique merchant order ID
         $merchantOrderId = 'AYO-' . date('YmdHis') . '-' . strtoupper(Str::random(5));
 
@@ -266,6 +324,12 @@ class PaymentController extends Controller
      */
     public function userTransactions(Request $request): JsonResponse
     {
+        // Auto-expire pending transactions older than 24 hours
+        PaymentTransaction::where('user_id', $request->user()->id)
+            ->where('status', 'pending')
+            ->where('created_at', '<', now()->subHours(24))
+            ->update(['status' => 'expired']);
+
         $transactions = PaymentTransaction::with([
             'wedding:id,slug,bride_name,groom_name',
             'template:id,name,thumbnail,category,tier'
@@ -275,5 +339,167 @@ class PaymentController extends Controller
             ->paginate($request->integer('per_page', 15));
 
         return response()->json($transactions);
+    }
+
+    /**
+     * Get active pending payment for a wedding.
+     */
+    public function pendingForWedding(Request $request, Wedding $wedding): JsonResponse
+    {
+        $this->authorize('update', $wedding);
+
+        $pending = PaymentTransaction::where('wedding_id', $wedding->id)
+            ->where('user_id', $request->user()->id)
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
+        if ($pending && $pending->created_at < now()->subHours(24)) {
+            $pending->update(['status' => 'expired']);
+            $pending = null;
+        }
+
+        return response()->json([
+            'has_pending' => !empty($pending),
+            'transaction' => $pending,
+            'duitku_js_url' => $this->duitkuService->getJsUrl(),
+        ]);
+    }
+
+    /**
+     * Resume pending payment transaction (retrieve reference and payment URL).
+     */
+    public function resume(Request $request, string $merchantOrderId): JsonResponse
+    {
+        $transaction = PaymentTransaction::where('merchant_order_id', $merchantOrderId)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        if ($transaction->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'status' => $transaction->status,
+                'message' => 'Transaksi ini sudah ' . ($transaction->status === 'paid' ? 'dibayar' : 'kedaluwarsa/dibatalkan') . '.',
+            ], 400);
+        }
+
+        if ($transaction->created_at < now()->subHours(24)) {
+            $transaction->update(['status' => 'expired']);
+            return response()->json([
+                'success' => false,
+                'status' => 'expired',
+                'message' => 'Tagihan ini telah kedaluwarsa (melebihi 24 jam). Silakan buat transaksi baru.',
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'reference' => $transaction->duitku_reference,
+            'payment_url' => $transaction->payment_url,
+            'merchant_order_id' => $transaction->merchant_order_id,
+            'duitku_js_url' => $this->duitkuService->getJsUrl(),
+            'amount' => $transaction->amount,
+        ]);
+    }
+
+    /**
+     * Sync transaction status on-demand directly with Duitku Inquiry API.
+     */
+    public function syncStatus(Request $request, string $merchantOrderId): JsonResponse
+    {
+        $transaction = PaymentTransaction::where('merchant_order_id', $merchantOrderId)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        if ($transaction->status === 'paid') {
+            return response()->json([
+                'status' => 'paid',
+                'is_paid' => true,
+                'message' => 'Transaksi sudah lunas.',
+                'transaction' => $transaction,
+            ]);
+        }
+
+        $duitkuStatus = $this->duitkuService->checkTransactionStatus($merchantOrderId);
+
+        if ($duitkuStatus) {
+            $statusCode = $duitkuStatus['statusCode'] ?? null;
+            if ($statusCode === '00') {
+                DB::transaction(function () use ($transaction, $duitkuStatus) {
+                    $transaction->update([
+                        'status' => 'paid',
+                        'paid_at' => now(),
+                        'raw_callback' => $duitkuStatus,
+                    ]);
+
+                    $wedding = $transaction->wedding;
+                    if ($wedding) {
+                        $wedding->is_premium_unlocked = true;
+                        $wedding->save();
+
+                        try {
+                            $this->publishingService->publish($wedding);
+                        } catch (\Exception $e) {
+                            Log::warning('Auto-publish sync error: ' . $e->getMessage());
+                        }
+                    }
+
+                    if ($transaction->coupon_id) {
+                        Coupon::where('id', $transaction->coupon_id)->increment('used_count');
+                    }
+                });
+            } elseif ($statusCode === '02') {
+                $transaction->update([
+                    'status' => 'expired',
+                    'raw_callback' => $duitkuStatus,
+                ]);
+            }
+        } else {
+            if ($transaction->created_at < now()->subHours(24)) {
+                $transaction->update(['status' => 'expired']);
+            }
+        }
+
+        $transaction->refresh();
+
+        return response()->json([
+            'status' => $transaction->status,
+            'is_paid' => $transaction->status === 'paid',
+            'is_premium_unlocked' => (bool) $transaction->wedding?->is_premium_unlocked,
+            'transaction' => $transaction,
+            'message' => match ($transaction->status) {
+                'paid' => 'Pembayaran berhasil dikonfirmasi! Undangan Anda telah dibuka.',
+                'expired' => 'Tagihan telah kedaluwarsa.',
+                'cancelled' => 'Tagihan telah dibatalkan.',
+                default => 'Status pembayaran masih menunggu (pending). Silakan selesaikan pembayaran.',
+            },
+        ]);
+    }
+
+    /**
+     * User can manually cancel a pending transaction.
+     */
+    public function cancelTransaction(Request $request, string $merchantOrderId): JsonResponse
+    {
+        $transaction = PaymentTransaction::where('merchant_order_id', $merchantOrderId)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        if ($transaction->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya transaksi berstatus pending yang dapat dibatalkan.',
+            ], 400);
+        }
+
+        $transaction->update([
+            'status' => 'cancelled',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tagihan pembayaran berhasil dibatalkan.',
+            'transaction' => $transaction,
+        ]);
     }
 }

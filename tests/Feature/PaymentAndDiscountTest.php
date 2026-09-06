@@ -286,4 +286,98 @@ class PaymentAndDiscountTest extends TestCase
         $this->assertEquals(99000, $this->template->price);
         $this->assertEquals(149000, $this->template->original_price);
     }
+
+    public function test_checkout_reuses_existing_pending_transaction_without_creating_duplicates(): void
+    {
+        // 1. First, create a pending transaction for this wedding
+        $existingTx = PaymentTransaction::create([
+            'merchant_order_id' => 'AYO-EXISTING-PENDING',
+            'user_id' => $this->user->id,
+            'wedding_id' => $this->wedding->id,
+            'template_id' => $this->template->id,
+            'base_price' => 100000,
+            'amount' => 100000,
+            'duitku_reference' => 'DUITKU-REF-12345',
+            'payment_url' => 'https://duitku.com/pay/12345',
+            'status' => 'pending',
+        ]);
+
+        // 2. User attempts checkout again for the same wedding
+        $response = $this->actingAs($this->user)
+            ->postJson("/api/v1/weddings/{$this->wedding->id}/checkout");
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('reused', true)
+            ->assertJsonPath('merchant_order_id', 'AYO-EXISTING-PENDING')
+            ->assertJsonPath('reference', 'DUITKU-REF-12345');
+
+        // Confirm database still has ONLY 1 transaction, not 2
+        $this->assertEquals(1, PaymentTransaction::where('wedding_id', $this->wedding->id)->count());
+    }
+
+    public function test_user_can_resume_pending_payment(): void
+    {
+        $tx = PaymentTransaction::create([
+            'merchant_order_id' => 'AYO-RESUME-001',
+            'user_id' => $this->user->id,
+            'wedding_id' => $this->wedding->id,
+            'template_id' => $this->template->id,
+            'base_price' => 100000,
+            'amount' => 100000,
+            'duitku_reference' => 'DUITKU-RESUME-REF',
+            'payment_url' => 'https://duitku.com/pay/resume',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->postJson("/api/v1/payments/{$tx->merchant_order_id}/resume");
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('reference', 'DUITKU-RESUME-REF')
+            ->assertJsonPath('payment_url', 'https://duitku.com/pay/resume');
+    }
+
+    public function test_user_can_cancel_pending_payment(): void
+    {
+        $tx = PaymentTransaction::create([
+            'merchant_order_id' => 'AYO-CANCEL-001',
+            'user_id' => $this->user->id,
+            'wedding_id' => $this->wedding->id,
+            'template_id' => $this->template->id,
+            'base_price' => 100000,
+            'amount' => 100000,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->postJson("/api/v1/payments/{$tx->merchant_order_id}/cancel");
+
+        $response->assertOk()
+            ->assertJsonPath('success', true);
+
+        $tx->refresh();
+        $this->assertEquals('cancelled', $tx->status);
+    }
+
+    public function test_pending_payment_endpoint_returns_active_transaction(): void
+    {
+        $tx = PaymentTransaction::create([
+            'merchant_order_id' => 'AYO-CHECK-001',
+            'user_id' => $this->user->id,
+            'wedding_id' => $this->wedding->id,
+            'template_id' => $this->template->id,
+            'base_price' => 100000,
+            'amount' => 100000,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->getJson("/api/v1/weddings/{$this->wedding->id}/pending-payment");
+
+        $response->assertOk()
+            ->assertJsonPath('has_pending', true)
+            ->assertJsonPath('transaction.merchant_order_id', 'AYO-CHECK-001');
+    }
 }

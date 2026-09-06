@@ -10,3 +10,5 @@ Artisan::command('inspire', function () {
 
 Schedule::command('weddings:purge-trashed')->daily();
 
+
+Schedule::command('payments:sync-pending')->everyFifteenMinutes();

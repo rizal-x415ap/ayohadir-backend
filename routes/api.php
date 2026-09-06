@@ -58,7 +58,11 @@ Route::prefix('v1')->group(function () {
         // Payment & Coupon API
         Route::post('/coupons/validate', [\App\Http\Controllers\Api\CouponController::class, 'validateCoupon']);
         Route::post('/weddings/{wedding}/checkout', [\App\Http\Controllers\Api\PaymentController::class, 'checkout']);
+        Route::get('/weddings/{wedding}/pending-payment', [\App\Http\Controllers\Api\PaymentController::class, 'pendingForWedding']);
         Route::get('/weddings/{wedding}/payment-status/{orderId}', [\App\Http\Controllers\Api\PaymentController::class, 'checkStatus']);
+        Route::post('/payments/{merchantOrderId}/resume', [\App\Http\Controllers\Api\PaymentController::class, 'resume']);
+        Route::post('/payments/{merchantOrderId}/sync-status', [\App\Http\Controllers\Api\PaymentController::class, 'syncStatus']);
+        Route::post('/payments/{merchantOrderId}/cancel', [\App\Http\Controllers\Api\PaymentController::class, 'cancelTransaction']);
         Route::get('/user/transactions', [\App\Http\Controllers\Api\PaymentController::class, 'userTransactions']);
 
         // Guest Management & Groups API
