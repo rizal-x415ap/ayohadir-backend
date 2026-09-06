@@ -1,0 +1,10 @@
+/.phpunit.cache
+/vendor
+/public/storage
+/storage/*.key
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
+database/database.sqlite
+database/database.sqlite-journal
