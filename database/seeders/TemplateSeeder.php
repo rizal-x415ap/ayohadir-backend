@@ -28,7 +28,7 @@ class TemplateSeeder extends Seeder
                     'schemaVersion' => 1,
                     'metadata' => ['id' => 'tpl_botanical', 'name' => 'Emerald Botanical', 'category' => 'botanical', 'slug' => 'emerald-botanical'],
                     'viewport' => ['baseWidth' => 390, 'contentWidth' => 390, 'baseUnit' => 8],
-                    'theme' => ['colors' => ['primary' => '#1ED760', 'background' => '#FAFAF9', 'text' => '#171A18']],
+                    'theme' => ['colors' => ['primary' => '#03AC0E', 'background' => '#FAFAF9', 'text' => '#171A18']],
                     'desktopCover' => [
                         'enabled' => true,
                         'widthRatio' => 40,
@@ -86,7 +86,7 @@ class TemplateSeeder extends Seeder
                                 'name' => 'Tombol Buka Undangan',
                                 'type' => 'button',
                                 'transform' => ['x' => 0, 'y' => 0, 'width' => 200, 'height' => 44, 'rotation' => 0, 'zIndex' => 5],
-                                'style' => ['backgroundColor' => '#1ED760', 'color' => '#171A18', 'borderRadius' => 22, 'fontWeight' => '700', 'fontSize' => 13],
+                                'style' => ['backgroundColor' => '#03AC0E', 'color' => '#171A18', 'borderRadius' => 22, 'fontWeight' => '700', 'fontSize' => 13],
                                 'props' => ['label' => 'Buka Undangan', 'actionType' => 'open-invitation'],
                             ],
                         ],
