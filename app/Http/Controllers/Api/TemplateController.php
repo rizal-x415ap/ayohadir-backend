@@ -198,6 +198,10 @@ class TemplateController extends Controller
                 'schemaVersion' => $template->schema_version,
                 'schema' => $template->schema,
                 'contract' => $template->contract,
+                'contact' => [
+                    'whatsapp_number' => \App\Models\AppSetting::get('admin_whatsapp_number', env('ADMIN_WHATSAPP_NUMBER', '081234567890')),
+                    'whatsapp_message' => \App\Models\AppSetting::get('admin_whatsapp_message', "Halo Admin Ayo Hadir, saya tertarik dibuatkan undangan pernikahan menggunakan tema *{template_name}*. Mohon info langkah selanjutnya. Terima kasih!"),
+                ],
             ],
             'meta' => [
                 'timestamp' => now()->toIso8601String(),

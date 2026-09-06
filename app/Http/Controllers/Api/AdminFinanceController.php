@@ -25,7 +25,14 @@ class AdminFinanceController extends Controller
         $globalDiscountValue = (int) AppSetting::get('discount_global_value', 0);
         $globalDiscountTitle = AppSetting::get('discount_global_title', 'Promo Peluncuran');
 
+        $whatsappNumber = AppSetting::get('admin_whatsapp_number', env('ADMIN_WHATSAPP_NUMBER', '081234567890'));
+        $whatsappMessage = AppSetting::get('admin_whatsapp_message', "Halo Admin Ayo Hadir, saya tertarik dibuatkan undangan pernikahan dengan tema *{template_name}*. Mohon info langkah selanjutnya. Terima kasih!");
+
         return response()->json([
+            'contact' => [
+                'whatsapp_number' => $whatsappNumber,
+                'whatsapp_message' => $whatsappMessage,
+            ],
             'duitku' => [
                 'merchant_code' => $duitkuMerchantCode,
                 'api_key' => $duitkuApiKey,
@@ -50,11 +57,13 @@ class AdminFinanceController extends Controller
         $validated = $request->validate([
             'duitku.merchant_code' => 'nullable|string|max:100',
             'duitku.api_key' => 'nullable|string|max:255',
-            'duitku.environment' => 'required|in:sandbox,production',
-            'global_discount.enabled' => 'required|boolean',
-            'global_discount.type' => 'required|in:percentage,fixed',
+            'duitku.environment' => 'nullable|in:sandbox,production',
+            'global_discount.enabled' => 'nullable|boolean',
+            'global_discount.type' => 'nullable|in:percentage,fixed',
             'global_discount.value' => 'nullable|integer|min:0',
             'global_discount.title' => 'nullable|string|max:150',
+            'contact.whatsapp_number' => 'nullable|string|max:30',
+            'contact.whatsapp_message' => 'nullable|string|max:1000',
         ]);
 
         if (isset($validated['duitku']['merchant_code'])) {
