@@ -126,9 +126,15 @@ class PublicInvitationController extends Controller
         // Fetch Approved / Real Wishes from RSVPs
         $wishes = [];
         if ($wedding) {
-            $wishes = $wedding->rsvps()
+            $wishesQuery = $wedding->rsvps()
                 ->whereNotNull('wishes')
-                ->where('wishes', '!=', '')
+                ->where('wishes', '!=', '');
+
+            if ($wedding->wishes_moderation_enabled) {
+                $wishesQuery->where('is_approved', true);
+            }
+
+            $wishes = $wishesQuery
                 ->with('guest')
                 ->orderByDesc('responded_at')
                 ->limit(50)

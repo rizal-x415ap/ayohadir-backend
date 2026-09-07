@@ -17,6 +17,8 @@ class Rsvp extends Model
         'attending',
         'attendee_count',
         'wishes',
+        'is_approved',
+        'approval_token',
         'responded_at',
     ];
 
@@ -25,6 +27,7 @@ class Rsvp extends Model
         return [
             'attending' => 'boolean',
             'attendee_count' => 'integer',
+            'is_approved' => 'boolean',
             'responded_at' => 'datetime',
         ];
     }

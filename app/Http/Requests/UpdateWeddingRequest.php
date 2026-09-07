@@ -51,6 +51,7 @@ class UpdateWeddingRequest extends FormRequest
             'rsvp_notification_enabled' => ['nullable', 'boolean'],
             'rsvp_notification_email' => ['nullable', 'email', 'max:255'],
             'wishes_enabled' => ['nullable', 'boolean'],
+            'wishes_moderation_enabled' => ['nullable', 'boolean'],
             'status' => ['nullable', 'string', Rule::in(['draft', 'published', 'unpublished'])],
         ];
     }

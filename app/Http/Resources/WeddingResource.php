@@ -43,6 +43,8 @@ class WeddingResource extends JsonResource
             'rsvp_notification_enabled' => (bool) $this->rsvp_notification_enabled,
             'rsvp_notification_email' => $this->rsvp_notification_email,
             'wishesEnabled' => (bool) $this->wishes_enabled,
+            'wishesModerationEnabled' => (bool) $this->wishes_moderation_enabled,
+            'wishes_moderation_enabled' => (bool) $this->wishes_moderation_enabled,
             'status' => $this->status,
             'publishedAt' => $this->published_at?->toIso8601String(),
             'createdAt' => $this->created_at->toIso8601String(),

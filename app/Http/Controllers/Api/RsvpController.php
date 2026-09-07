@@ -147,6 +147,11 @@ class RsvpController extends Controller
 
             $guest = $invitation->guest;
 
+            $hasWish = !empty(trim((string) $wishes));
+            $needsApproval = $wedding->wishes_moderation_enabled && $hasWish;
+            $isApproved = !$needsApproval;
+            $approvalToken = $needsApproval ? Str::random(48) : null;
+
             // Create RSVP
             $rsvp = Rsvp::create([
                 'wedding_id' => $wedding->id,
@@ -155,6 +160,8 @@ class RsvpController extends Controller
                 'attending' => $attending,
                 'attendee_count' => $attendeeCount,
                 'wishes' => $wishes,
+                'is_approved' => $isApproved,
+                'approval_token' => $approvalToken,
                 'responded_at' => now(),
             ]);
 
@@ -207,6 +214,11 @@ class RsvpController extends Controller
                 'open_count' => 1,
             ]);
 
+            $hasWish = !empty(trim((string) $wishes));
+            $needsApproval = $wedding->wishes_moderation_enabled && $hasWish;
+            $isApproved = !$needsApproval;
+            $approvalToken = $needsApproval ? Str::random(48) : null;
+
             // Buat record RSVP
             $rsvp = Rsvp::create([
                 'wedding_id' => $wedding->id,
@@ -215,6 +227,8 @@ class RsvpController extends Controller
                 'attending' => $attending,
                 'attendee_count' => $attendeeCount,
                 'wishes' => $wishes,
+                'is_approved' => $isApproved,
+                'approval_token' => $approvalToken,
                 'responded_at' => now(),
             ]);
 
@@ -228,7 +242,9 @@ class RsvpController extends Controller
             attending: $rsvp->attending,
             attendeeCount: (int) $rsvp->attendee_count,
             wishes: $rsvp->wishes,
-            type: 'rsvp'
+            type: 'rsvp',
+            needsApproval: $needsApproval,
+            approvalToken: $approvalToken
         );
 
         return response()->json([
@@ -287,6 +303,10 @@ class RsvpController extends Controller
 
             $guest = $invitation->guest;
 
+            $needsApproval = (bool) $wedding->wishes_moderation_enabled;
+            $isApproved = !$needsApproval;
+            $approvalToken = $needsApproval ? Str::random(48) : null;
+
             // Update or create RSVP record with wishes
             $rsvp = Rsvp::updateOrCreate(
                 [
@@ -298,6 +318,8 @@ class RsvpController extends Controller
                     'attending' => $invitation->rsvp ? $invitation->rsvp->attending : true,
                     'attendee_count' => $invitation->rsvp ? $invitation->rsvp->attendee_count : 1,
                     'wishes' => $messageText,
+                    'is_approved' => $isApproved,
+                    'approval_token' => $approvalToken,
                     'responded_at' => now(),
                 ]
             );
@@ -319,6 +341,10 @@ class RsvpController extends Controller
                 'open_count' => 1,
             ]);
 
+            $needsApproval = (bool) $wedding->wishes_moderation_enabled;
+            $isApproved = !$needsApproval;
+            $approvalToken = $needsApproval ? Str::random(48) : null;
+
             $rsvp = Rsvp::create([
                 'wedding_id' => $wedding->id,
                 'invitation_id' => $invitation->id,
@@ -326,6 +352,8 @@ class RsvpController extends Controller
                 'attending' => true,
                 'attendee_count' => 1,
                 'wishes' => $messageText,
+                'is_approved' => $isApproved,
+                'approval_token' => $approvalToken,
                 'responded_at' => now(),
             ]);
         }
@@ -336,7 +364,9 @@ class RsvpController extends Controller
             attending: (bool) $rsvp->attending,
             attendeeCount: (int) $rsvp->attendee_count,
             wishes: $rsvp->wishes,
-            type: 'wish'
+            type: 'wish',
+            needsApproval: $needsApproval,
+            approvalToken: $approvalToken
         );
 
         return response()->json([
@@ -405,10 +435,111 @@ class RsvpController extends Controller
     }
 
     /**
+     * Toggle wish approval status from owner's guest manager dashboard.
+     */
+    public function toggleApproval(Request $request, Wedding $wedding, Rsvp $rsvp): JsonResponse
+    {
+        $this->authorize('update', $wedding);
+
+        if ($rsvp->wedding_id !== $wedding->id) {
+            return response()->json([
+                'error' => [
+                    'code' => 'NOT_FOUND',
+                    'message' => 'Data RSVP tidak ditemukan pada acara ini.',
+                ],
+            ], 404);
+        }
+
+        $newStatus = $request->has('is_approved')
+            ? $request->boolean('is_approved')
+            : !$rsvp->is_approved;
+
+        $rsvp->update([
+            'is_approved' => $newStatus,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $newStatus
+                ? 'Ucapan berhasil disetujui dan kini tampil di undangan.'
+                : 'Ucapan berhasil disembunyikan dari halaman undangan.',
+            'data' => new RsvpResource($rsvp->load('guest')),
+        ]);
+    }
+
+    /**
+     * Approve a wish publicly via 1-click magic link from email without requiring login.
+     */
+    public function approvePublicWish(Request $request): JsonResponse
+    {
+        $request->validate([
+            'token' => ['required', 'string', 'max:100'],
+        ], [
+            'token.required' => 'Token persetujuan tidak ditemukan.',
+        ]);
+
+        $token = $request->input('token');
+
+        $rsvp = Rsvp::where('approval_token', $token)
+            ->with(['wedding', 'guest'])
+            ->first();
+
+        if (!$rsvp) {
+            return response()->json([
+                'error' => [
+                    'code' => 'INVALID_TOKEN',
+                    'message' => 'Tautan persetujuan ucapan tidak valid atau sudah kedaluwarsa.',
+                ],
+            ], 404);
+        }
+
+        $wedding = $rsvp->wedding;
+
+        // If already approved, return idempotent success
+        if ($rsvp->is_approved) {
+            return response()->json([
+                'success' => true,
+                'already_approved' => true,
+                'message' => 'Ucapan ini sudah disetujui sebelumnya dan sedang tampil di undangan.',
+                'data' => [
+                    'guestName' => $rsvp->guest?->name ?? 'Tamu Undangan',
+                    'weddingTitle' => $wedding ? ($wedding->bride_name . ' & ' . $wedding->groom_name) : 'Undangan Pernikahan',
+                    'weddingSlug' => $wedding?->slug,
+                    'wish' => $rsvp->wishes,
+                ],
+            ]);
+        }
+
+        $rsvp->update([
+            'is_approved' => true,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'already_approved' => false,
+            'message' => 'Ucapan berhasil disetujui dan kini telah tampil di undangan!',
+            'data' => [
+                'guestName' => $rsvp->guest?->name ?? 'Tamu Undangan',
+                'weddingTitle' => $wedding ? ($wedding->bride_name . ' & ' . $wedding->groom_name) : 'Undangan Pernikahan',
+                'weddingSlug' => $wedding?->slug,
+                'wish' => $rsvp->wishes,
+            ],
+        ]);
+    }
+
+    /**
      * Send email notification to wedding owner or custom recipient.
      */
-    protected function notifyRsvpEvent(Wedding $wedding, string $guestName, ?bool $attending, int $attendeeCount, ?string $wishes, string $type = 'rsvp'): void
-    {
+    protected function notifyRsvpEvent(
+        Wedding $wedding,
+        string $guestName,
+        ?bool $attending,
+        int $attendeeCount,
+        ?string $wishes,
+        string $type = 'rsvp',
+        bool $needsApproval = false,
+        ?string $approvalToken = null
+    ): void {
         try {
             if (!$wedding->rsvp_notification_enabled) {
                 return;
@@ -428,7 +559,9 @@ class RsvpController extends Controller
                     attending: $attending,
                     attendeeCount: $attendeeCount,
                     wishes: $wishes,
-                    type: $type
+                    type: $type,
+                    needsApproval: $needsApproval,
+                    approvalToken: $approvalToken
                 )
             );
         } catch (\Throwable $e) {

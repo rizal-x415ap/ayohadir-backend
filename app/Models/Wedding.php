@@ -38,6 +38,7 @@ class Wedding extends Model
         'rsvp_enabled',
         'rsvp_deadline',
         'wishes_enabled',
+        'wishes_moderation_enabled',
         'rsvp_notification_enabled',
         'rsvp_notification_email',
         'status',
@@ -53,6 +54,7 @@ class Wedding extends Model
         'status' => 'draft',
         'rsvp_enabled' => true,
         'wishes_enabled' => true,
+        'wishes_moderation_enabled' => false,
         'rsvp_notification_enabled' => true,
     ];
 
@@ -71,6 +73,7 @@ class Wedding extends Model
             'is_premium_unlocked' => 'boolean',
             'rsvp_enabled' => 'boolean',
             'wishes_enabled' => 'boolean',
+            'wishes_moderation_enabled' => 'boolean',
             'rsvp_notification_enabled' => 'boolean',
             'published_at' => 'datetime',
         ];

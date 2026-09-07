@@ -31,6 +31,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/{slug}/rsvp', [\App\Http\Controllers\Api\RsvpController::class, 'submitPublic'])->middleware('throttle:15,1');
         Route::post('/invitations/{slug}/wishes', [\App\Http\Controllers\Api\RsvpController::class, 'submitWishPublic'])->middleware('throttle:20,1');
         Route::post('/{slug}/wishes', [\App\Http\Controllers\Api\RsvpController::class, 'submitWishPublic'])->middleware('throttle:20,1');
+        Route::post('/wishes/approve', [\App\Http\Controllers\Api\RsvpController::class, 'approvePublicWish'])->middleware('throttle:20,1');
     });
 
     // Webhook Callback for Duitku Payment Gateway (Public, Unauthenticated, Excluded from CSRF)
@@ -83,6 +84,7 @@ Route::prefix('v1')->group(function () {
 
         // RSVP & Analytics Management API
         Route::get('/weddings/{wedding}/rsvps', [\App\Http\Controllers\Api\RsvpController::class, 'index']);
+        Route::post('/weddings/{wedding}/rsvps/{rsvp}/toggle-approval', [\App\Http\Controllers\Api\RsvpController::class, 'toggleApproval']);
         Route::delete('/weddings/{wedding}/rsvps/{rsvp}/wishes', [\App\Http\Controllers\Api\RsvpController::class, 'deleteWish']);
         Route::delete('/weddings/{wedding}/rsvps/{rsvp}', [\App\Http\Controllers\Api\RsvpController::class, 'destroy']);
         Route::get('/weddings/{wedding}/analytics', [\App\Http\Controllers\Api\AnalyticsController::class, 'show']);

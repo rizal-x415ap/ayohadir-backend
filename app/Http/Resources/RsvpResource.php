@@ -30,6 +30,8 @@ class RsvpResource extends JsonResource
             'attending' => (bool) $this->attending,
             'attendeeCount' => $this->attendee_count,
             'wishes' => $this->wishes,
+            'isApproved' => (bool) $this->is_approved,
+            'is_approved' => (bool) $this->is_approved,
             'respondedAt' => $this->responded_at->toIso8601String(),
             'createdAt' => $this->created_at->toIso8601String(),
             'updatedAt' => $this->updated_at->toIso8601String(),
