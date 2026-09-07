@@ -35,7 +35,7 @@ class PublishingController extends Controller
 
         $user = $request->user();
         $isPaidTemplate = $template && (int) $template->price > 0;
-        $isUnlocked = (bool) $wedding->is_premium_unlocked || ($user && $user->isAdmin());
+        $isUnlocked = $wedding->isTemplateUnlocked($template, $user);
         $requiresPayment = $isPaidTemplate && !$isUnlocked;
 
         $couponCode = $request->query('coupon');
@@ -92,7 +92,7 @@ class PublishingController extends Controller
         $template = $templateId ? Template::find($templateId) : null;
 
         $isPaidTemplate = $template && (int) $template->price > 0;
-        $isUnlocked = (bool) $wedding->is_premium_unlocked || ($user && $user->isAdmin());
+        $isUnlocked = $wedding->isTemplateUnlocked($template, $user);
 
         if ($isPaidTemplate && !$isUnlocked) {
             return response()->json([

@@ -45,10 +45,7 @@ class PaymentController extends Controller
         $template = $templateId ? Template::find($templateId) : null;
 
         if (!$template || (int) $template->price <= 0) {
-            // Free template, automatically unlock
-            $wedding->is_premium_unlocked = true;
-            $wedding->save();
-
+            // Free template, no payment required
             return response()->json([
                 'success' => true,
                 'is_free' => true,
@@ -56,7 +53,7 @@ class PaymentController extends Controller
             ]);
         }
 
-        if ($wedding->is_premium_unlocked) {
+        if ($wedding->isTemplateUnlocked($template, $user)) {
             return response()->json([
                 'success' => true,
                 'is_free' => false,
@@ -70,9 +67,6 @@ class PaymentController extends Controller
 
         // If after stackable discounts the price is Rp 0
         if ($pricing['final_amount'] <= 0) {
-            $wedding->is_premium_unlocked = true;
-            $wedding->save();
-
             // Record transaction for 0 amount if coupon was used
             if (!empty($pricing['coupon']['id'])) {
                 $coupon = Coupon::find($pricing['coupon']['id']);
@@ -81,7 +75,7 @@ class PaymentController extends Controller
                 }
             }
 
-            PaymentTransaction::create([
+            $tx = PaymentTransaction::create([
                 'merchant_order_id' => 'FREE-' . strtoupper(Str::random(10)),
                 'duitku_reference' => null,
                 'user_id' => $user->id,
@@ -97,6 +91,8 @@ class PaymentController extends Controller
                 'status' => 'paid',
                 'paid_at' => now(),
             ]);
+
+            $wedding->unlockTemplate($template, $tx->id);
 
             return response()->json([
                 'success' => true,
@@ -128,8 +124,7 @@ class PaymentController extends Controller
                     'paid_at' => now(),
                     'raw_callback' => $duitkuStatus,
                 ]);
-                $wedding->is_premium_unlocked = true;
-                $wedding->save();
+                $wedding->unlockTemplate($existingPending->template_id ?: $template, $existingPending->id);
 
                 try {
                     $this->publishingService->publish($wedding);
@@ -290,8 +285,12 @@ class PaymentController extends Controller
                 // Unlock wedding template
                 $wedding = $transaction->wedding;
                 if ($wedding) {
-                    $wedding->is_premium_unlocked = true;
-                    $wedding->save();
+                    if ($transaction->template_id) {
+                        $wedding->unlockTemplate($transaction->template_id, $transaction->id);
+                    } else {
+                        $wedding->is_premium_unlocked = true;
+                        $wedding->save();
+                    }
 
                     // Auto-publish if draft was waiting
                     try {
@@ -434,8 +433,12 @@ class PaymentController extends Controller
 
                     $wedding = $transaction->wedding;
                     if ($wedding) {
-                        $wedding->is_premium_unlocked = true;
-                        $wedding->save();
+                        if ($transaction->template_id) {
+                            $wedding->unlockTemplate($transaction->template_id, $transaction->id);
+                        } else {
+                            $wedding->is_premium_unlocked = true;
+                            $wedding->save();
+                        }
 
                         try {
                             $this->publishingService->publish($wedding);

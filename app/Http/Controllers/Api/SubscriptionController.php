@@ -160,8 +160,12 @@ class SubscriptionController extends Controller
             'activated_at' => now(),
         ]);
 
-        $wedding->is_premium_unlocked = true;
-        $wedding->save();
+        if ($template) {
+            $wedding->unlockTemplate($template);
+        } else {
+            $wedding->is_premium_unlocked = true;
+            $wedding->save();
+        }
 
         return response()->json([
             'data' => [

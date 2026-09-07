@@ -13,6 +13,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class TemplateController extends Controller
@@ -133,8 +134,19 @@ class TemplateController extends Controller
     {
         $this->authorize('update', $wedding);
 
-        // Allow user to freely test and apply any template; payment is checked on publish
+        $oldTemplateId = $wedding->applied_template_id ?: $wedding->design?->template_id;
+        $isDifferentTemplate = ((int) $oldTemplateId !== (int) $template->id);
+
         $wedding->applied_template_id = $template->id;
+
+        // Automatically revert status to draft if template is changed
+        if ($isDifferentTemplate && $wedding->status === 'published') {
+            $wedding->status = 'draft';
+            Cache::forget("public_invitation:{$wedding->slug}");
+        }
+
+        // Check if the newly applied template is unlocked for this wedding
+        $wedding->is_premium_unlocked = $wedding->isTemplateUnlocked($template, $request->user());
         $wedding->save();
 
         $design = $wedding->design ?? new Design(['wedding_id' => $wedding->id]);
@@ -152,6 +164,8 @@ class TemplateController extends Controller
                 'version' => $design->version,
                 'schemaVersion' => $design->schema_version,
                 'applied' => true,
+                'status' => $wedding->status,
+                'isPremiumUnlocked' => (bool) $wedding->is_premium_unlocked,
                 'updatedAt' => $design->updated_at->toIso8601String(),
             ],
             'meta' => [

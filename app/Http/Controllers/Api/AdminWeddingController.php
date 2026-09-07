@@ -164,6 +164,17 @@ class AdminWeddingController extends Controller
         $wedding->is_premium_unlocked = !$wedding->is_premium_unlocked;
         $wedding->save();
 
+        $templateId = $wedding->applied_template_id ?: $wedding->design?->template_id;
+        if ($templateId) {
+            if ($wedding->is_premium_unlocked) {
+                $wedding->unlockTemplate($templateId);
+            } else {
+                \App\Models\WeddingTemplatePurchase::where('wedding_id', $wedding->id)
+                    ->where('template_id', $templateId)
+                    ->delete();
+            }
+        }
+
         return response()->json([
             'message' => $wedding->is_premium_unlocked ? 'Lisensi template dibuka (Unlocked).' : 'Lisensi template dikunci (Locked).',
             'is_premium_unlocked' => $wedding->is_premium_unlocked,

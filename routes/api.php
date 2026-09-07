@@ -51,7 +51,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/weddings/{wedding}/apply-template/{template}', [\App\Http\Controllers\Api\TemplateController::class, 'applyToWedding']);
         Route::get('/weddings/{wedding}/content', [\App\Http\Controllers\Api\WeddingContentController::class, 'show']);
         Route::put('/weddings/{wedding}/content', [\App\Http\Controllers\Api\WeddingContentController::class, 'update']);
-        Route::post('/weddings/{wedding}/validate', [\App\Http\Controllers\Api\PublishingController::class, 'validateWedding']);
+        Route::match(['get', 'post'], '/weddings/{wedding}/validate', [\App\Http\Controllers\Api\PublishingController::class, 'validateWedding']);
+        Route::match(['get', 'post'], '/weddings/{wedding}/publish/validate', [\App\Http\Controllers\Api\PublishingController::class, 'validateWedding']);
         Route::post('/weddings/{wedding}/publish', [\App\Http\Controllers\Api\PublishingController::class, 'publish']);
         Route::post('/weddings/{wedding}/unpublish', [\App\Http\Controllers\Api\PublishingController::class, 'unpublish']);
 

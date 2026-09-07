@@ -52,19 +52,33 @@ class PricingService
         }
 
         $finalAmount = max($basePrice - $globalDiscountAmount - $couponDiscountAmount, 0);
+        $totalDiscount = $globalDiscountAmount + $couponDiscountAmount;
 
         return [
             'base_price' => $basePrice,
+            'formatted_base_price' => 'Rp ' . number_format($basePrice, 0, ',', '.'),
             'global_discount' => [
                 'enabled' => $globalEnabled,
                 'title' => $globalTitle,
                 'type' => $globalType,
                 'value' => $globalValue,
                 'amount' => $globalDiscountAmount,
+                'formatted_amount' => 'Rp ' . number_format($globalDiscountAmount, 0, ',', '.'),
             ],
+            'global_discount_amount' => $globalDiscountAmount,
+            'formatted_global_discount_amount' => 'Rp ' . number_format($globalDiscountAmount, 0, ',', '.'),
+            'global_discount_title' => $globalTitle,
+            'global_discount_percentage' => $globalType === 'percentage' ? $globalValue : 0,
             'coupon' => $couponData,
-            'total_discount' => $globalDiscountAmount + $couponDiscountAmount,
+            'coupon_code' => $couponData['code'] ?? null,
+            'coupon_discount_amount' => $couponDiscountAmount,
+            'formatted_coupon_discount_amount' => 'Rp ' . number_format($couponDiscountAmount, 0, ',', '.'),
+            'coupon_discount_percentage' => ($couponData && $couponData['type'] === 'percentage') ? $couponData['value'] : 0,
+            'total_discount' => $totalDiscount,
+            'formatted_total_discount' => 'Rp ' . number_format($totalDiscount, 0, ',', '.'),
             'final_amount' => $finalAmount,
+            'final_price' => $finalAmount,
+            'formatted_final_price' => 'Rp ' . number_format($finalAmount, 0, ',', '.'),
             'is_free' => $finalAmount === 0,
         ];
     }

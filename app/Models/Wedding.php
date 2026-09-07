@@ -135,4 +135,101 @@ class Wedding extends Model
     {
         return $this->hasMany(PageView::class);
     }
+
+    /**
+     * Template purchases / unlocks for this specific wedding.
+     */
+    public function templatePurchases(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(WeddingTemplatePurchase::class);
+    }
+
+    /**
+     * Unlocked templates for this wedding.
+     */
+    public function unlockedTemplates(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Template::class, 'wedding_template_purchases')
+            ->withPivot(['payment_transaction_id', 'unlocked_at'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Check if a specific template is unlocked/licensed for this specific wedding.
+     */
+    public function isTemplateUnlocked(int|Template|null $template, ?User $user = null): bool
+    {
+        if (!$template) {
+            return true;
+        }
+
+        $templateModel = is_numeric($template) ? Template::find($template) : $template;
+        if (!$templateModel) {
+            return true;
+        }
+
+        // Free templates are always accessible
+        if ((int) $templateModel->price <= 0) {
+            return true;
+        }
+
+        // Platform admins have universal access
+        if ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) {
+            return true;
+        }
+
+        // Check if explicitly unlocked for this wedding in wedding_template_purchases
+        $hasPurchase = $this->templatePurchases()
+            ->where('template_id', $templateModel->id)
+            ->exists();
+
+        if ($hasPurchase) {
+            return true;
+        }
+
+        // Also check if there's a paid transaction for this wedding and template
+        $hasPaidTransaction = PaymentTransaction::where('wedding_id', $this->id)
+            ->where('template_id', $templateModel->id)
+            ->where('status', 'paid')
+            ->exists();
+
+        if ($hasPaidTransaction) {
+            // Auto-heal purchase record
+            $this->unlockTemplate($templateModel);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Unlock a specific template for this wedding.
+     */
+    public function unlockTemplate(int|Template $template, ?int $transactionId = null): WeddingTemplatePurchase
+    {
+        $templateId = is_numeric($template) ? (int) $template : $template->id;
+
+        $purchase = WeddingTemplatePurchase::firstOrCreate(
+            [
+                'wedding_id' => $this->id,
+                'template_id' => $templateId,
+            ],
+            [
+                'payment_transaction_id' => $transactionId,
+                'unlocked_at' => now(),
+            ]
+        );
+
+        if ($transactionId && !$purchase->payment_transaction_id) {
+            $purchase->update(['payment_transaction_id' => $transactionId]);
+        }
+
+        // If this is the currently applied template, sync the boolean flag as well
+        if ((int) $this->applied_template_id === $templateId) {
+            $this->updateQuietly(['is_premium_unlocked' => true]);
+        }
+
+        return $purchase;
+    }
 }
+

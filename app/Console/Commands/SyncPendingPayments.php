@@ -39,8 +39,12 @@ class SyncPendingPayments extends Command
 
                     $wedding = $tx->wedding;
                     if ($wedding) {
-                        $wedding->is_premium_unlocked = true;
-                        $wedding->save();
+                        if ($tx->template_id) {
+                            $wedding->unlockTemplate($tx->template_id, $tx->id);
+                        } else {
+                            $wedding->is_premium_unlocked = true;
+                            $wedding->save();
+                        }
 
                         try {
                             $publishingService->publish($wedding);
