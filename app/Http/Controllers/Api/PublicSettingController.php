@@ -32,6 +32,7 @@ class PublicSettingController extends Controller
                     'title' => AppSetting::get('landing_hero_title', 'Buat Undangan Pernikahan Digital dalam Hitungan Menit'),
                     'subtitle' => AppSetting::get('landing_hero_subtitle', 'Pilih desain elegan, sesuaikan data pengantin dengan mudah, dan bagikan langsung ke WhatsApp keluarga dan kerabat.'),
                     'phoneImage' => AppSetting::get('landing_hero_phone_image', $defaultHeroImage),
+                    'phoneLink' => AppSetting::get('landing_hero_phone_link', ''),
                     'ctaPrimary' => AppSetting::get('landing_hero_cta_primary', 'Lihat Template'),
                     'ctaSecondary' => AppSetting::get('landing_hero_cta_secondary', 'Buat Undangan Sendiri'),
                 ],

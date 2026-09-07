@@ -33,6 +33,7 @@ class AdminLandingSettingController extends Controller
                 'title' => AppSetting::get('landing_hero_title', 'Buat Undangan Pernikahan Digital dalam Hitungan Menit'),
                 'subtitle' => AppSetting::get('landing_hero_subtitle', 'Pilih desain elegan, sesuaikan data pengantin dengan mudah, dan bagikan langsung ke WhatsApp keluarga dan kerabat.'),
                 'phone_image' => AppSetting::get('landing_hero_phone_image', $defaultHeroImage),
+                'phone_link' => AppSetting::get('landing_hero_phone_link', ''),
                 'cta_primary_text' => AppSetting::get('landing_hero_cta_primary', 'Lihat Template'),
                 'cta_secondary_text' => AppSetting::get('landing_hero_cta_secondary', 'Buat Undangan Sendiri'),
             ],
@@ -76,6 +77,7 @@ class AdminLandingSettingController extends Controller
             'hero.title' => 'nullable|string|max:200',
             'hero.subtitle' => 'nullable|string|max:500',
             'hero.phone_image' => 'nullable|string|max:1000',
+            'hero.phone_link' => 'nullable|string|max:1000',
             'hero.cta_primary_text' => 'nullable|string|max:50',
             'hero.cta_secondary_text' => 'nullable|string|max:50',
 
@@ -121,6 +123,9 @@ class AdminLandingSettingController extends Controller
         }
         if (isset($validated['hero']['phone_image'])) {
             AppSetting::set('landing_hero_phone_image', trim($validated['hero']['phone_image']), 'landing');
+        }
+        if (array_key_exists('phone_link', $request->input('hero', []))) {
+            AppSetting::set('landing_hero_phone_link', trim($request->input('hero.phone_link') ?? ''), 'landing');
         }
         if (isset($validated['hero']['cta_primary_text'])) {
             AppSetting::set('landing_hero_cta_primary', trim($validated['hero']['cta_primary_text']), 'landing');
