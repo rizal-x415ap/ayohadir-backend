@@ -77,8 +77,8 @@
                 <tr>
                   <td style="padding: 24px 32px; background-color: #F8FAFC; border-top: 1px solid #F1F5F9; font-size: 11px; color: #64748B; line-height: 1.6;">
                     <p style="margin: 0 0 8px 0; font-weight: 600; color: #475569;">Ayo Hadir — Platform Undangan Digital &amp; Visual Wedding Builder</p>
-                    <p style="margin: 0 0 8px 0;">Email ini dikirimkan secara otomatis dari server resmi <strong>inv.ayohadir.id</strong>. Mohon tidak membalas langsung email ini.</p>
-                    <p style="margin: 0 0 4px 0;">Pertanyaan atau kendala? Hubungi tim bantuan kami melalui <a href="mailto:support@inv.ayohadir.id" style="color: #03AC0E; text-decoration: underline;">support@inv.ayohadir.id</a></p>
+                    <p style="margin: 0 0 8px 0;">Email ini dikirimkan secara otomatis dari server resmi <strong>ayohadir.id</strong>. Mohon tidak membalas langsung email ini.</p>
+                    <p style="margin: 0 0 4px 0;">Pertanyaan atau kendala? Hubungi tim bantuan kami melalui <a href="mailto:support@ayohadir.id" style="color: #03AC0E; text-decoration: underline;">support@ayohadir.id</a></p>
                     <p style="margin: 12px 0 0 0; color: #94A3B8; font-size: 10px;">&copy; {{ date('Y') }} Ayo Hadir. Hak cipta dilindungi undang-undang.</p>
                   </td>
                 </tr>
