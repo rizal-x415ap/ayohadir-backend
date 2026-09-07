@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TemplateResource;
 use App\Models\Media;
+use App\Models\PaymentTransaction;
 use App\Models\Template;
 use App\Models\User;
 use App\Models\Wedding;
@@ -28,6 +29,11 @@ class AdminOverviewController extends Controller
         $totalWeddings = Wedding::count();
         $totalUsers = User::count();
 
+        $totalRevenue = (int) PaymentTransaction::where('status', 'paid')->sum('amount');
+        $paidTransactionsCount = PaymentTransaction::where('status', 'paid')->count();
+        $pendingTransactionsCount = PaymentTransaction::where('status', 'pending')->count();
+        $totalTransactionsCount = PaymentTransaction::count();
+
         $assetCategories = Media::where('is_system', true)
             ->selectRaw('category, count(*) as count')
             ->groupBy('category')
@@ -47,6 +53,11 @@ class AdminOverviewController extends Controller
                     'totalAssets' => $totalAssets,
                     'totalWeddings' => $totalWeddings,
                     'totalUsers' => $totalUsers,
+                    'totalRevenue' => $totalRevenue,
+                    'totalRevenueFormatted' => 'Rp ' . number_format($totalRevenue, 0, ',', '.'),
+                    'paidTransactionsCount' => $paidTransactionsCount,
+                    'pendingTransactionsCount' => $pendingTransactionsCount,
+                    'totalTransactionsCount' => $totalTransactionsCount,
                 ],
                 'assetCategories' => $assetCategories,
                 'recentTemplates' => TemplateResource::collection($recentTemplates),
