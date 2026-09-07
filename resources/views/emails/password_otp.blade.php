@@ -6,7 +6,7 @@
 </h1>
 
 <p style="margin: 0 0 16px 0; color: #475569; line-height: 1.6;">
-  Halo <strong>{{ $name }}</strong>, kami menerima permintaan untuk mengganti kata sandi akun Ayo Hadir Anda. Silakan masukkan kode verifikasi OTP berikut pada formulir pengaturan akun:
+  Halo <strong>{{ $name }}</strong>, kami menerima permintaan untuk mengatur ulang kata sandi akun Ayo Hadir Anda. Silakan masukkan kode verifikasi OTP berikut pada formulir verifikasi:
 </p>
 
 <!-- OTP Highlight Box -->

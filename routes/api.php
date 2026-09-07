@@ -21,6 +21,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
         Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
         Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
+        Route::post('/forgot-password/request-otp', [\App\Http\Controllers\Api\Auth\ForgotPasswordController::class, 'requestOtp'])->middleware('throttle:5,1');
+        Route::post('/forgot-password/reset', [\App\Http\Controllers\Api\Auth\ForgotPasswordController::class, 'resetPassword'])->middleware('throttle:5,1');
     });
 
     // Public / Unauthenticated Endpoints (Rate Limited)
