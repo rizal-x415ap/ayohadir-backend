@@ -2413,6 +2413,57 @@ class StudioDesignTest extends TestCase
             ->assertJsonPath('data.schema.sections.0.elements.2.animation.ambient.preset', 'gentle-float')
             ->assertJsonPath('data.schema.sections.0.elements.2.animation.ambient.phase', 25);
     }
+
+    public function test_global_typography_system_persists_intact(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $wedding = Wedding::factory()->create();
+
+        $schema = [
+            'schemaVersion' => 1,
+            'theme' => [
+                'paletteId' => 'royal-emerald',
+                'typography' => [
+                    'heading' => 'Playfair Display, serif',
+                    'body' => 'Inter, sans-serif',
+                    'accent' => 'Alex Brush, cursive',
+                ],
+            ],
+            'sections' => [
+                [
+                    'id' => 'sec_cover',
+                    'name' => 'Sampul',
+                    'type' => 'cover',
+                    'height' => 600,
+                    'elements' => [
+                        [
+                            'id' => 'el_text_1',
+                            'name' => 'Wedding Title',
+                            'type' => 'text',
+                            'transform' => ['x' => 50, 'y' => 100, 'width' => 290, 'height' => 60, 'rotation' => 0, 'zIndex' => 1],
+                            'style' => [
+                                'fontFamily' => 'Playfair Display, serif',
+                                'fontSize' => 32,
+                            ],
+                            'props' => ['text' => 'The Wedding of Romeo & Juliet'],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $saveRes = $this->actingAs($admin)->putJson('/api/v1/weddings/' . $wedding->id . '/design', [
+            'schema' => $schema,
+        ]);
+        $saveRes->assertStatus(200);
+
+        $fetchRes = $this->actingAs($admin)->getJson('/api/v1/weddings/' . $wedding->id . '/design');
+        $fetchRes->assertStatus(200)
+            ->assertJsonPath('data.schema.theme.typography.heading', 'Playfair Display, serif')
+            ->assertJsonPath('data.schema.theme.typography.body', 'Inter, sans-serif')
+            ->assertJsonPath('data.schema.theme.typography.accent', 'Alex Brush, cursive')
+            ->assertJsonPath('data.schema.sections.0.elements.0.style.fontFamily', 'Playfair Display, serif');
+    }
 }
 
 
