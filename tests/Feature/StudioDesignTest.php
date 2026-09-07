@@ -2464,6 +2464,79 @@ class StudioDesignTest extends TestCase
             ->assertJsonPath('data.schema.theme.typography.accent', 'Alex Brush, cursive')
             ->assertJsonPath('data.schema.sections.0.elements.0.style.fontFamily', 'Playfair Display, serif');
     }
+
+    public function test_curved_divider_element_persists_intact(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $wedding = Wedding::factory()->create();
+
+        $curvedDividerElement = [
+            'id' => 'el_curve_test_1',
+            'name' => 'Multi-Layer Waves',
+            'type' => 'curvedDivider',
+            'widthMode' => 'fixed',
+            'heightMode' => 'fixed',
+            'transform' => [
+                'x' => 0,
+                'y' => 250,
+                'width' => 390,
+                'height' => 100,
+                'rotation' => 0,
+                'zIndex' => 3,
+            ],
+            'style' => [],
+            'responsiveScale' => [
+                'enabled' => true,
+                'intensity' => 'full-width',
+            ],
+            'props' => [
+                'layout' => 'multi-wave',
+                'layer1Color' => 'token:background',
+                'layer1Opacity' => 1.0,
+                'layer2Color' => 'token:secondary',
+                'layer2Opacity' => 0.75,
+                'layer3Color' => 'token:accent',
+                'layer3Opacity' => 0.45,
+                'flipX' => true,
+                'flipY' => false,
+                'hasShadow' => true,
+            ],
+        ];
+
+        $schema = [
+            'schemaVersion' => 1,
+            'metadata' => [
+                'id' => 'design_curve_test',
+                'name' => 'Curved Divider Test Design',
+            ],
+            'sections' => [
+                [
+                    'id' => 'sec_hero',
+                    'name' => 'Hero Section',
+                    'height' => 600,
+                    'elements' => [$curvedDividerElement],
+                ],
+            ],
+        ];
+
+        $saveRes = $this->actingAs($admin)->putJson('/api/v1/weddings/' . $wedding->id . '/design', [
+            'schema' => $schema,
+        ]);
+        $saveRes->assertStatus(200)
+            ->assertJsonPath('data.saved', true);
+
+        $fetchRes = $this->actingAs($admin)->getJson('/api/v1/weddings/' . $wedding->id . '/design');
+        $fetchRes->assertStatus(200)
+            ->assertJsonPath('data.schema.sections.0.elements.0.type', 'curvedDivider')
+            ->assertJsonPath('data.schema.sections.0.elements.0.props.layout', 'multi-wave')
+            ->assertJsonPath('data.schema.sections.0.elements.0.props.layer1Color', 'token:background')
+            ->assertJsonPath('data.schema.sections.0.elements.0.props.layer2Color', 'token:secondary')
+            ->assertJsonPath('data.schema.sections.0.elements.0.props.layer3Color', 'token:accent')
+            ->assertJsonPath('data.schema.sections.0.elements.0.props.flipX', true)
+            ->assertJsonPath('data.schema.sections.0.elements.0.props.flipY', false)
+            ->assertJsonPath('data.schema.sections.0.elements.0.props.hasShadow', true)
+            ->assertJsonPath('data.schema.sections.0.elements.0.responsiveScale.intensity', 'full-width');
+    }
 }
 
 
