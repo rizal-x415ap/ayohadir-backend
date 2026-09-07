@@ -19,7 +19,10 @@ class DatabaseSeeder extends Seeder
         // 2. Plans & Pricing Seed (Production & Local)
         $this->call(PlanSeeder::class);
 
-        // 3. Demo & Acceptance Test Environment Seed (Local & Staging Only)
+        // 3. Admin & Demo Users Seed (Production & Local)
+        $this->call(UserSeeder::class);
+
+        // 4. Demo & Acceptance Test Environment Seed (Local & Staging Only)
         if (!app()->environment('production')) {
             $this->call(DemoEnvironmentSeeder::class);
         }
