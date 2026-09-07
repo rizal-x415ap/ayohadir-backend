@@ -36,7 +36,7 @@ class GuestResource extends JsonResource
                 ] : null;
             }),
             'invitationToken' => $this->invitation?->token,
-            'invitationUrl' => $this->invitation ? url("/{$this->wedding->slug}?guest={$this->invitation->token}") : null,
+            'invitationUrl' => $this->wedding ? url("/{$this->wedding->slug}?to=" . urlencode($this->name)) : null,
             'openedAt' => $this->invitation?->opened_at?->toIso8601String(),
             'openCount' => $this->invitation?->open_count ?? 0,
             'whatsappSentAt' => $this->invitation?->whatsapp_sent_at?->toIso8601String(),

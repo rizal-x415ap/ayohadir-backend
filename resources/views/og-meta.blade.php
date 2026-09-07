@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>{{ $title }} — Ayo Hadir</title>
     <meta name="description" content="{{ $description }}">
+    <meta name="theme-color" content="{{ $themeColor ?? '#03AC0E' }}">
 
     <!-- Open Graph (Facebook, WhatsApp, Telegram) -->
     <meta property="og:type" content="website">

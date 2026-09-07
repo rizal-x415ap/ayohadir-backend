@@ -82,16 +82,54 @@ class PublicInvitationController extends Controller
             $wedding = Wedding::where('slug', $slug)->first();
         }
 
-        // Guest Personalization (Isolated & Non-leaking)
+        // Guest Personalization & Name-based tracking
         $guestTo = $request->query('to');
         $guestData = null;
         $hasRsvp = false;
 
-        if ($guestToken && $wedding) {
-            $invitation = Invitation::where('token', $guestToken)
-                ->where('wedding_id', $wedding->id)
-                ->with(['guest', 'rsvp'])
-                ->first();
+        if ($wedding && ($guestToken || $guestTo)) {
+            $invitation = null;
+
+            // 1. Try finding by unique token if provided
+            if ($guestToken) {
+                $invitation = Invitation::where('token', $guestToken)
+                    ->where('wedding_id', $wedding->id)
+                    ->with(['guest', 'rsvp'])
+                    ->first();
+            }
+
+            // 2. If not found by token, look up registered guest by name (?to= or ?guest=)
+            if (!$invitation) {
+                $searchName = trim((string) ($guestTo ?: $guestToken));
+                if (!empty($searchName)) {
+                    $matchedGuest = $wedding->guests()
+                        ->where('name', $searchName)
+                        ->with(['invitation.rsvp'])
+                        ->first();
+
+                    if ($matchedGuest && $matchedGuest->invitation) {
+                        $invitation = $matchedGuest->invitation;
+                        $invitation->setRelation('guest', $matchedGuest);
+                    } elseif ($matchedGuest) {
+                        $guestData = [
+                            'token' => null,
+                            'name' => $matchedGuest->name,
+                            'maxAttendees' => $matchedGuest->max_attendees,
+                            'isRegistered' => true,
+                            'existingRsvp' => null,
+                        ];
+                    } else {
+                        // Unregistered public personalized guest
+                        $guestData = [
+                            'token' => null,
+                            'name' => $searchName,
+                            'maxAttendees' => 5,
+                            'isRegistered' => false,
+                            'existingRsvp' => null,
+                        ];
+                    }
+                }
+            }
 
             if ($invitation && $invitation->guest) {
                 $guestData = [
@@ -111,16 +149,10 @@ class PublicInvitationController extends Controller
                     $invitation->opened_at = now();
                     $invitation->open_count = 1;
                     $invitation->save();
+                } else {
+                    $invitation->increment('open_count');
                 }
             }
-        } elseif ($guestTo) {
-            $guestData = [
-                'token' => null,
-                'name' => trim((string) $guestTo),
-                'maxAttendees' => 5,
-                'isRegistered' => false,
-                'existingRsvp' => null,
-            ];
         }
 
         // Fetch Approved / Real Wishes from RSVPs

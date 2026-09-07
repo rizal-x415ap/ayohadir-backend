@@ -29,6 +29,8 @@ Route::prefix('v1')->group(function () {
     Route::prefix('public')->group(function () {
         Route::get('/settings', [\App\Http\Controllers\Api\PublicSettingController::class, 'index']);
         Route::get('/templates', [\App\Http\Controllers\Api\TemplateController::class, 'index']);
+        Route::get('/og/template/{slug}', [\App\Http\Controllers\Api\PublicOgController::class, 'templateOg']);
+        Route::get('/og/{slug}', [\App\Http\Controllers\Api\PublicOgController::class, 'weddingOg']);
         Route::get('/invitations/{slug}', [\App\Http\Controllers\Api\PublicInvitationController::class, 'show']);
         Route::get('/templates/{slugOrId}/preview', [\App\Http\Controllers\Api\TemplateController::class, 'preview']);
         Route::post('/invitations/{slug}/rsvp', [\App\Http\Controllers\Api\RsvpController::class, 'submitPublic'])->middleware('throttle:15,1');

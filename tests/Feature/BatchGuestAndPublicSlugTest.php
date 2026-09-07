@@ -190,9 +190,9 @@ class BatchGuestAndPublicSlugTest extends TestCase
         $this->assertNotNull($guestToken);
         $this->assertSame(4, strlen($guestToken));
 
-        // 3. Verify invitation URL includes 4-character token
+        // 3. Verify invitation URL includes guest name parameter ?to=
         $invitationUrl = $response->json('data.invitationUrl');
-        $this->assertStringContainsString("?guest={$guestToken}", $invitationUrl);
+        $this->assertStringContainsString("?to=Tamu+Terhormat", $invitationUrl);
 
         // 4. Verify batch creation also generates 4-character tokens
         $batchResponse = $this->actingAs($user)->postJson("/api/v1/weddings/{$wedding->id}/guests/batch", [
@@ -206,5 +206,81 @@ class BatchGuestAndPublicSlugTest extends TestCase
         foreach ($batchGuests as $bg) {
             $this->assertSame(4, strlen($bg['invitationToken']));
         }
+    }
+
+    public function test_public_og_endpoints_resolve_metadata_with_couple_photo_and_guest_name(): void
+    {
+        $user = User::factory()->create();
+        $template = Template::create([
+            'name' => 'Royal Emerald',
+            'slug' => 'royal-emerald',
+            'category' => 'luxury',
+            'description' => 'Tema mewah royal emerald.',
+            'thumbnail' => 'https://example.com/royal.jpg',
+            'schema_version' => 1,
+            'contract' => ['slots' => []],
+            'schema' => [
+                'theme' => ['colors' => ['primary' => '#03AC0E']],
+                'desktopCover' => [
+                    'elements' => [
+                        [
+                            'bindingKey' => 'couple.couplePhotoUrl',
+                            'props' => ['url' => 'https://images.unsplash.com/couple-sample.jpg'],
+                        ],
+                    ],
+                ],
+            ],
+            'is_active' => true,
+        ]);
+
+        $wedding = Wedding::factory()->create([
+            'user_id' => $user->id,
+            'applied_template_id' => $template->id,
+            'slug' => 'budi-ani',
+            'bride_name' => 'Ani',
+            'groom_name' => 'Budi',
+            'status' => 'published',
+            'custom_content' => [
+                'couple.couplePhotoUrl' => 'https://images.unsplash.com/budi-ani-couple.jpg',
+            ],
+        ]);
+
+        $guest = Guest::create([
+            'wedding_id' => $wedding->id,
+            'name' => 'Bpk. Hendra Wijaya',
+            'max_attendees' => 2,
+        ]);
+        $guest->invitation()->create([
+            'wedding_id' => $wedding->id,
+            'token' => 't123',
+        ]);
+
+        // 1. Test template OG endpoint
+        $resTemplate = $this->getJson("/api/v1/public/og/template/royal-emerald");
+        $resTemplate->assertStatus(200)
+            ->assertJsonPath('data.title', 'Template Undangan: Royal Emerald — Ayo Hadir')
+            ->assertJsonPath('data.image', 'https://images.unsplash.com/couple-sample.jpg')
+            ->assertJsonPath('data.themeColor', '#03AC0E');
+
+        // 2. Test wedding OG endpoint without guest
+        $resWedding = $this->getJson("/api/v1/public/og/budi-ani");
+        $resWedding->assertStatus(200)
+            ->assertJsonPath('data.title', 'The Wedding of Ani & Budi — Ayo Hadir')
+            ->assertJsonPath('data.image', 'https://images.unsplash.com/budi-ani-couple.jpg');
+
+        // 3. Test wedding OG endpoint with guest ?to=
+        $resWeddingGuest = $this->getJson("/api/v1/public/og/budi-ani?to=" . urlencode('Bpk. Hendra Wijaya'));
+        $resWeddingGuest->assertStatus(200)
+            ->assertJsonPath('data.title', 'Undangan Pernikahan untuk Bpk. Hendra Wijaya — Ani & Budi')
+            ->assertJsonPath('data.guestName', 'Bpk. Hendra Wijaya');
+
+        // 4. Test public invitation resolves registered guest by name ?to=
+        $resInv = $this->getJson("/api/v1/public/invitations/budi-ani?to=" . urlencode('Bpk. Hendra Wijaya'));
+        $resInv->assertStatus(200)
+            ->assertJsonPath('data.guest.name', 'Bpk. Hendra Wijaya')
+            ->assertJsonPath('data.guest.isRegistered', true);
+
+        // Verify open count incremented
+        $this->assertEquals(1, $guest->invitation->fresh()->open_count);
     }
 }

@@ -196,23 +196,53 @@ class RsvpController extends Controller
                 ], 422);
             }
 
-            // Buat data tamu baru di database
-            $guest = Guest::create([
-                'wedding_id' => $wedding->id,
-                'name' => $name,
-                'phone' => $request->input('phone'),
-                'max_attendees' => max(1, $attendeeCount),
-                'notes' => 'RSVP Publik',
-            ]);
+            // Cek apakah tamu dengan nama ini sudah ada di daftar tamu pemilik undangan
+            $matchedGuest = $wedding->guests()->where('name', $name)->first();
+            if ($matchedGuest) {
+                $guest = $matchedGuest;
+                $invitation = $guest->invitation;
+                if (!$invitation) {
+                    $invitation = Invitation::create([
+                        'wedding_id' => $wedding->id,
+                        'guest_id' => $guest->id,
+                        'token' => Invitation::generateUniqueToken(),
+                        'opened_at' => now(),
+                        'open_count' => 1,
+                    ]);
+                } else {
+                    // Jika tamu sudah pernah mengirim RSVP, tolak agar tidak ganda
+                    $existingRsvp = Rsvp::where('wedding_id', $wedding->id)
+                        ->where('invitation_id', $invitation->id)
+                        ->first();
 
-            // Buat data undangan dengan token unik
-            $invitation = Invitation::create([
-                'wedding_id' => $wedding->id,
-                'guest_id' => $guest->id,
-                'token' => Invitation::generateUniqueToken(),
-                'opened_at' => now(),
-                'open_count' => 1,
-            ]);
+                    if ($existingRsvp) {
+                        return response()->json([
+                            'error' => [
+                                'code' => 'ALREADY_CONFIRMED',
+                                'message' => 'Anda sudah mengirimkan konfirmasi kehadiran sebelumnya.',
+                            ],
+                        ], 422);
+                    }
+                }
+            } else {
+                // Buat data tamu baru di database
+                $guest = Guest::create([
+                    'wedding_id' => $wedding->id,
+                    'name' => $name,
+                    'phone' => $request->input('phone'),
+                    'max_attendees' => max(1, $attendeeCount),
+                    'notes' => 'RSVP Publik',
+                ]);
+
+                // Buat data undangan dengan token unik
+                $invitation = Invitation::create([
+                    'wedding_id' => $wedding->id,
+                    'guest_id' => $guest->id,
+                    'token' => Invitation::generateUniqueToken(),
+                    'opened_at' => now(),
+                    'open_count' => 1,
+                ]);
+            }
 
             $hasWish = !empty(trim((string) $wishes));
             $needsApproval = $wedding->wishes_moderation_enabled && $hasWish;
