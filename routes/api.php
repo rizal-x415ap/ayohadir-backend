@@ -147,6 +147,14 @@ Route::prefix('v1')->group(function () {
 
             // Admin User Management
             Route::apiResource('users', \App\Http\Controllers\Api\AdminUserController::class);
+
+            // Admin Landing Page Content & Mockup Image Management
+            Route::prefix('landing-settings')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Api\AdminLandingSettingController::class, 'getSettings']);
+                Route::post('/', [\App\Http\Controllers\Api\AdminLandingSettingController::class, 'updateSettings']);
+                Route::post('/upload-hero', [\App\Http\Controllers\Api\AdminLandingSettingController::class, 'uploadHeroImage']);
+                Route::post('/upload-builder', [\App\Http\Controllers\Api\AdminLandingSettingController::class, 'uploadBuilderImage']);
+            });
         });
     });
 });

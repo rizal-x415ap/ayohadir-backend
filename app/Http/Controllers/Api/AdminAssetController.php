@@ -33,6 +33,17 @@ class AdminAssetController extends Controller
             $query->where('type', $request->query('type'));
         }
 
+        if ($request->filled('exclude_type')) {
+            $query->where('type', '!=', $request->query('exclude_type'));
+        }
+
+        if ($request->boolean('exclude_music')) {
+            $query->where(function ($q) {
+                $q->where('category', '!=', 'music')
+                  ->orWhereNull('category');
+            })->where('type', '!=', 'audio');
+        }
+
         if ($request->filled('category')) {
             if ($request->query('category') === 'music') {
                 $query->where(function ($q) {

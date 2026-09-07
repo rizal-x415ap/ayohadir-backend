@@ -31,6 +31,17 @@ class TemplateController extends Controller
             $query->where('is_active', true);
         }
 
+        // Support filtering templates specifically designated for landing page showcase
+        if ($request->boolean('landing_only')) {
+            $landingIdsRaw = \App\Models\AppSetting::get('landing_template_ids', null);
+            if ($landingIdsRaw) {
+                $landingIds = json_decode($landingIdsRaw, true);
+                if (is_array($landingIds) && count($landingIds) > 0) {
+                    $query->whereIn('id', $landingIds);
+                }
+            }
+        }
+
         if ($request->filled('category')) {
             $query->where('category', $request->query('category'));
         }

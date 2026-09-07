@@ -19,11 +19,39 @@ class PublicSettingController extends Controller
         $instagramUrl = AppSetting::get('instagram_url', 'https://instagram.com/ayohadir.id');
         $tiktokUrl = AppSetting::get('tiktok_url', 'https://tiktok.com/@ayohadir.id');
 
+        $defaultHeroImage = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80';
+        $defaultBuilderImage = 'https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?auto=format&fit=crop&w=1600&h=1000&q=80';
+
         return response()->json([
             'data' => [
                 'brandName' => 'Ayo Hadir',
-                'tagline' => 'Undangan Digital Elegan untuk Momen Istimewa',
-                'description' => 'Platform undangan digital pernikahan profesional dengan visual luxury, visual builder, dan konfirmasi kehadiran terpadu.',
+                'tagline' => AppSetting::get('landing_hero_tagline', 'Platform Undangan Digital #1 di Indonesia'),
+                'description' => AppSetting::get('landing_hero_subtitle', 'Platform undangan digital pernikahan profesional dengan visual luxury, visual builder, dan konfirmasi kehadiran terpadu.'),
+                'hero' => [
+                    'tagline' => AppSetting::get('landing_hero_tagline', 'Platform Undangan Digital #1 di Indonesia'),
+                    'title' => AppSetting::get('landing_hero_title', 'Buat Undangan Pernikahan Digital dalam Hitungan Menit'),
+                    'subtitle' => AppSetting::get('landing_hero_subtitle', 'Pilih desain elegan, sesuaikan data pengantin dengan mudah, dan bagikan langsung ke WhatsApp keluarga dan kerabat.'),
+                    'phoneImage' => AppSetting::get('landing_hero_phone_image', $defaultHeroImage),
+                    'ctaPrimary' => AppSetting::get('landing_hero_cta_primary', 'Lihat Template'),
+                    'ctaSecondary' => AppSetting::get('landing_hero_cta_secondary', 'Buat Undangan Sendiri'),
+                ],
+                'builder' => [
+                    'image' => AppSetting::get('landing_builder_image', $defaultBuilderImage),
+                ],
+                'stats' => [
+                    'stat1' => [
+                        'value' => AppSetting::get('landing_stat1_value', '50+'),
+                        'label' => AppSetting::get('landing_stat1_label', 'Template Premium'),
+                    ],
+                    'stat2' => [
+                        'value' => AppSetting::get('landing_stat2_value', 'Real-Time'),
+                        'label' => AppSetting::get('landing_stat2_label', 'Konfirmasi RSVP'),
+                    ],
+                    'stat3' => [
+                        'value' => AppSetting::get('landing_stat3_value', '1-Klik'),
+                        'label' => AppSetting::get('landing_stat3_label', 'Kirim WhatsApp'),
+                    ],
+                ],
                 'contact' => [
                     'whatsappNumber' => $whatsappNumber,
                     'whatsappMessage' => $whatsappMessage,
