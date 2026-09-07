@@ -26,6 +26,7 @@ class PaymentTransaction extends Model
         'payment_url',
         'status',
         'paid_at',
+        'receipt_sent_at',
         'raw_callback',
     ];
 
@@ -37,6 +38,7 @@ class PaymentTransaction extends Model
             'coupon_discount_amount' => 'integer',
             'amount' => 'integer',
             'paid_at' => 'datetime',
+            'receipt_sent_at' => 'datetime',
             'raw_callback' => 'array',
         ];
     }

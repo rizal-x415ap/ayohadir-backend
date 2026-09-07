@@ -38,6 +38,12 @@ Route::prefix('v1')->group(function () {
 
     // Authenticated Project Management Routes
     Route::middleware(['auth:sanctum'])->group(function () {
+        // User Profile & Account Settings (Change Password via Email OTP)
+        Route::get('/user/profile', [\App\Http\Controllers\Api\UserProfileController::class, 'show']);
+        Route::put('/user/profile', [\App\Http\Controllers\Api\UserProfileController::class, 'update']);
+        Route::post('/user/password/request-otp', [\App\Http\Controllers\Api\UserProfileController::class, 'requestPasswordOtp'])->middleware('throttle:3,1');
+        Route::post('/user/password/confirm', [\App\Http\Controllers\Api\UserProfileController::class, 'confirmPasswordChange'])->middleware('throttle:5,1');
+
         // Wedding Trash & Restoration
         Route::get('/weddings/trash', [WeddingController::class, 'trash']);
         Route::post('/weddings/{id}/restore', [WeddingController::class, 'restore']);

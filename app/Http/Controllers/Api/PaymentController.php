@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\TransactionSuccessEmail;
 use App\Models\Coupon;
 use App\Models\PaymentTransaction;
 use App\Models\Template;
@@ -16,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class PaymentController extends Controller
@@ -93,6 +95,7 @@ class PaymentController extends Controller
             ]);
 
             $wedding->unlockTemplate($template, $tx->id);
+            $this->sendReceiptEmailSafely($tx);
 
             return response()->json([
                 'success' => true,
@@ -306,6 +309,8 @@ class PaymentController extends Controller
                 }
             });
 
+            $this->sendReceiptEmailSafely($transaction);
+
             Log::info("Duitku payment SUCCESS for order {$merchantOrderId}");
         } else {
             $transaction->update([
@@ -451,6 +456,8 @@ class PaymentController extends Controller
                         Coupon::where('id', $transaction->coupon_id)->increment('used_count');
                     }
                 });
+
+                $this->sendReceiptEmailSafely($transaction);
             } elseif ($statusCode === '02') {
                 $transaction->update([
                     'status' => 'expired',
@@ -504,5 +511,34 @@ class PaymentController extends Controller
             'message' => 'Tagihan pembayaran berhasil dibatalkan.',
             'transaction' => $transaction,
         ]);
+    }
+
+    /**
+     * Safely send official transaction invoice email to user (idempotent, fail-safe).
+     */
+    protected function sendReceiptEmailSafely(PaymentTransaction $transaction): void
+    {
+        try {
+            $transaction->refresh();
+            if ($transaction->status !== 'paid' || $transaction->receipt_sent_at !== null) {
+                return;
+            }
+
+            $user = $transaction->user;
+            if (!$user || empty($user->email)) {
+                return;
+            }
+
+            $transaction->loadMissing(['wedding', 'template', 'user']);
+
+            Mail::to($user->email)->send(
+                new TransactionSuccessEmail($transaction)
+            );
+
+            $transaction->update(['receipt_sent_at' => now()]);
+            Log::info("Receipt email sent for transaction {$transaction->merchant_order_id} to {$user->email}");
+        } catch (\Throwable $e) {
+            Log::warning("Failed to send transaction receipt email for {$transaction->merchant_order_id}: " . $e->getMessage());
+        }
     }
 }

@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Mail\WelcomeEmail;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
@@ -32,6 +35,13 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
+
+        // Send Welcome Email (Non-blocking resilience)
+        try {
+            Mail::to($user->email)->send(new WelcomeEmail($user));
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send welcome email upon registration: ' . $e->getMessage());
+        }
 
         return response()->json([
             'data' => [

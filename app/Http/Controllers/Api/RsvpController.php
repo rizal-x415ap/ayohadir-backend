@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SubmitRsvpRequest;
 use App\Http\Resources\RsvpResource;
+use App\Mail\RsvpNotificationEmail;
 use App\Models\Guest;
 use App\Models\Invitation;
 use App\Models\Rsvp;
@@ -14,6 +15,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class RsvpController extends Controller
@@ -219,6 +222,15 @@ class RsvpController extends Controller
             Cache::put($cacheKey, true, now()->addDays(30));
         }
 
+        $this->notifyRsvpEvent(
+            wedding: $wedding,
+            guestName: $guest->name,
+            attending: $rsvp->attending,
+            attendeeCount: (int) $rsvp->attendee_count,
+            wishes: $rsvp->wishes,
+            type: 'rsvp'
+        );
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -318,6 +330,15 @@ class RsvpController extends Controller
             ]);
         }
 
+        $this->notifyRsvpEvent(
+            wedding: $wedding,
+            guestName: $guest->name,
+            attending: (bool) $rsvp->attending,
+            attendeeCount: (int) $rsvp->attendee_count,
+            wishes: $rsvp->wishes,
+            type: 'wish'
+        );
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -381,5 +402,37 @@ class RsvpController extends Controller
             'success' => true,
             'message' => 'Data RSVP berhasil dihapus.',
         ]);
+    }
+
+    /**
+     * Send email notification to wedding owner or custom recipient.
+     */
+    protected function notifyRsvpEvent(Wedding $wedding, string $guestName, ?bool $attending, int $attendeeCount, ?string $wishes, string $type = 'rsvp'): void
+    {
+        try {
+            if (!$wedding->rsvp_notification_enabled) {
+                return;
+            }
+
+            $wedding->loadMissing('user');
+            $recipient = $wedding->rsvp_notification_email ?: $wedding->user?->email;
+
+            if (empty($recipient)) {
+                return;
+            }
+
+            Mail::to($recipient)->send(
+                new RsvpNotificationEmail(
+                    wedding: $wedding,
+                    guestName: $guestName,
+                    attending: $attending,
+                    attendeeCount: $attendeeCount,
+                    wishes: $wishes,
+                    type: $type
+                )
+            );
+        } catch (\Throwable $e) {
+            Log::warning("Failed to send RSVP email notification: " . $e->getMessage());
+        }
     }
 }
