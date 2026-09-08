@@ -38,6 +38,13 @@ class GlobalAssetController extends Controller
                     $q->where('category', 'music')
                       ->orWhere('type', 'audio');
                 });
+            } elseif ($request->query('category') === 'gif') {
+                $query->where(function ($q) {
+                    $q->where('category', 'gif')
+                      ->orWhere('mime_type', 'image/gif')
+                      ->orWhere('path', 'like', '%.gif')
+                      ->orWhere('filename', 'like', '%.gif');
+                });
             } else {
                 $query->where('category', $request->query('category'));
             }

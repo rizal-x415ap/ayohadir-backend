@@ -31,7 +31,7 @@ class UploadMediaRequest extends FormRequest
                 'nullable',
                 'file',
                 'max:20480', // 20MB max limit
-                'mimes:jpeg,jpg,png,webp,svg,mp3,wav,mp4',
+                'mimes:jpeg,jpg,png,webp,svg,gif,mp3,wav,mp4',
             ],
             'files' => [
                 'required_without:file',
@@ -41,7 +41,7 @@ class UploadMediaRequest extends FormRequest
             'files.*' => [
                 'file',
                 'max:20480',
-                'mimes:jpeg,jpg,png,webp,svg,mp3,wav,mp4',
+                'mimes:jpeg,jpg,png,webp,svg,gif,mp3,wav,mp4',
             ],
             'title' => ['nullable', 'string', 'max:255'],
             'artist' => ['nullable', 'string', 'max:255'],

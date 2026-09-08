@@ -139,6 +139,26 @@ class MediaService
         bool $isSystem
     ): array {
         $realPath = $file->getRealPath();
+        $ext = strtolower($file->getClientOriginalExtension()) ?: 'jpg';
+        $fileMime = $file->getMimeType() ?: 'image/jpeg';
+
+        // Animated GIF: preserve original format without WebP conversion to keep animation frames, loop, and alpha transparency intact
+        if ($ext === 'gif' || $fileMime === 'image/gif') {
+            $rawPath = $file->storeAs($directory, "{$uuid}.gif", $disk);
+            $size = $file->getSize();
+            $this->assertStorageWithinQuota($wedding, $size, $isSystem);
+            $info = @getimagesize($realPath);
+
+            return [
+                'path' => $rawPath,
+                'mime' => 'image/gif',
+                'size' => $size,
+                'width' => $info[0] ?? null,
+                'height' => $info[1] ?? null,
+                'variants' => null,
+            ];
+        }
+
         $targetFilename = "{$uuid}.webp";
         $storagePath = "{$directory}/{$targetFilename}";
 
