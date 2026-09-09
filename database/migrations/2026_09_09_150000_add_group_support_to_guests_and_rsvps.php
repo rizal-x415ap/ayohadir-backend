@@ -11,19 +11,30 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // 1. Add is_group to guests table
-        Schema::table('guests', function (Blueprint $table) {
-            $table->boolean('is_group')->default(false)->after('max_attendees');
-            $table->index(['wedding_id', 'is_group']);
-        });
+        // 1. Add is_group to guests table if not present
+        if (!Schema::hasColumn('guests', 'is_group')) {
+            Schema::table('guests', function (Blueprint $table) {
+                $table->boolean('is_group')->default(false)->after('max_attendees');
+                $table->index(['wedding_id', 'is_group']);
+            });
+        }
 
-        // 2. Add name and drop unique on invitation_id in rsvps table
-        Schema::table('rsvps', function (Blueprint $table) {
-            $table->string('name')->nullable()->after('guest_id');
-            // Drop unique constraint to allow multiple RSVPs per group invitation
-            $table->dropUnique(['invitation_id']);
-            $table->index('invitation_id');
-        });
+        // 2. Add name to rsvps table if not present
+        if (!Schema::hasColumn('rsvps', 'name')) {
+            Schema::table('rsvps', function (Blueprint $table) {
+                $table->string('name')->nullable()->after('guest_id');
+            });
+        }
+
+        // 3. Drop unique constraint on invitation_id to allow multiple RSVPs per group invitation
+        try {
+            Schema::table('rsvps', function (Blueprint $table) {
+                $table->dropUnique(['invitation_id']);
+                $table->index('invitation_id');
+            });
+        } catch (\Throwable $e) {
+            // Constraint may have already been dropped or indexed
+        }
     }
 
     /**
@@ -31,15 +42,20 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('rsvps', function (Blueprint $table) {
-            $table->dropIndex(['invitation_id']);
-            $table->unique('invitation_id');
-            $table->dropColumn('name');
-        });
+        try {
+            Schema::table('rsvps', function (Blueprint $table) {
+                if (Schema::hasColumn('rsvps', 'name')) {
+                    $table->dropColumn('name');
+                }
+            });
+        } catch (\Throwable $e) {}
 
-        Schema::table('guests', function (Blueprint $table) {
-            $table->dropIndex(['wedding_id', 'is_group']);
-            $table->dropColumn('is_group');
-        });
+        try {
+            Schema::table('guests', function (Blueprint $table) {
+                if (Schema::hasColumn('guests', 'is_group')) {
+                    $table->dropColumn('is_group');
+                }
+            });
+        } catch (\Throwable $e) {}
     }
 };
