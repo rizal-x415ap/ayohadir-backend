@@ -215,6 +215,14 @@ class PublicInvitationController extends Controller
         $responseData['hasRsvp'] = $hasRsvp || $hasSubmittedFromDevice;
         $responseData['hasSubmittedFromDevice'] = $hasSubmittedFromDevice;
         $responseData['wishes'] = $wishes;
+        $responseData['protection'] = [
+            'enabled' => \App\Models\AppSetting::get('protection_enabled', 'true') === 'true',
+            'blockRightClick' => \App\Models\AppSetting::get('protection_block_right_click', 'true') === 'true',
+            'blockShortcuts' => \App\Models\AppSetting::get('protection_block_shortcuts', 'true') === 'true',
+            'blockDrag' => \App\Models\AppSetting::get('protection_block_drag', 'true') === 'true',
+            'showToast' => \App\Models\AppSetting::get('protection_show_toast', 'true') === 'true',
+            'toastMessage' => \App\Models\AppSetting::get('protection_toast_message', 'Konten dan desain undangan ini dilindungi hak cipta Ayo Hadir.'),
+        ];
 
         return response()->json([
             'data' => $responseData,

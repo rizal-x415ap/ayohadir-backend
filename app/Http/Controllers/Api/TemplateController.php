@@ -227,6 +227,14 @@ class TemplateController extends Controller
                     'whatsapp_number' => \App\Models\AppSetting::get('admin_whatsapp_number', env('ADMIN_WHATSAPP_NUMBER', '081234567890')),
                     'whatsapp_message' => \App\Models\AppSetting::get('admin_whatsapp_message', "Halo Admin Ayo Hadir, saya tertarik dibuatkan undangan pernikahan menggunakan tema *{template_name}*. Mohon info langkah selanjutnya. Terima kasih!"),
                 ],
+                'protection' => [
+                    'enabled' => \App\Models\AppSetting::get('protection_enabled', 'true') === 'true',
+                    'blockRightClick' => \App\Models\AppSetting::get('protection_block_right_click', 'true') === 'true',
+                    'blockShortcuts' => \App\Models\AppSetting::get('protection_block_shortcuts', 'true') === 'true',
+                    'blockDrag' => \App\Models\AppSetting::get('protection_block_drag', 'true') === 'true',
+                    'showToast' => \App\Models\AppSetting::get('protection_show_toast', 'true') === 'true',
+                    'toastMessage' => \App\Models\AppSetting::get('protection_toast_message', 'Konten dan desain undangan ini dilindungi hak cipta Ayo Hadir.'),
+                ],
             ],
             'meta' => [
                 'timestamp' => now()->toIso8601String(),

@@ -60,6 +60,14 @@ class PublicSettingController extends Controller
                     'instagramUrl' => $instagramUrl,
                     'tiktokUrl' => $tiktokUrl,
                 ],
+                'protection' => [
+                    'enabled' => AppSetting::get('protection_enabled', 'true') === 'true',
+                    'blockRightClick' => AppSetting::get('protection_block_right_click', 'true') === 'true',
+                    'blockShortcuts' => AppSetting::get('protection_block_shortcuts', 'true') === 'true',
+                    'blockDrag' => AppSetting::get('protection_block_drag', 'true') === 'true',
+                    'showToast' => AppSetting::get('protection_show_toast', 'true') === 'true',
+                    'toastMessage' => AppSetting::get('protection_toast_message', 'Konten dan desain undangan ini dilindungi hak cipta Ayo Hadir.'),
+                ],
             ],
             'meta' => [
                 'timestamp' => now()->toIso8601String(),

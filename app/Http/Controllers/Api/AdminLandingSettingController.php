@@ -59,6 +59,14 @@ class AdminLandingSettingController extends Controller
                 'selected_ids' => is_array($savedTemplateIds) ? $savedTemplateIds : [],
                 'all' => $allTemplates,
             ],
+            'protection' => [
+                'enabled' => AppSetting::get('protection_enabled', 'true') === 'true',
+                'block_right_click' => AppSetting::get('protection_block_right_click', 'true') === 'true',
+                'block_shortcuts' => AppSetting::get('protection_block_shortcuts', 'true') === 'true',
+                'block_drag' => AppSetting::get('protection_block_drag', 'true') === 'true',
+                'show_toast' => AppSetting::get('protection_show_toast', 'true') === 'true',
+                'toast_message' => AppSetting::get('protection_toast_message', 'Konten dan desain undangan ini dilindungi hak cipta Ayo Hadir.'),
+            ],
         ];
 
         return response()->json([
@@ -98,7 +106,36 @@ class AdminLandingSettingController extends Controller
             'templates.selected_ids.*' => 'integer',
 
             'builder.image' => 'nullable|string|max:1000',
+
+            'protection.enabled' => 'nullable|boolean',
+            'protection.block_right_click' => 'nullable|boolean',
+            'protection.block_shortcuts' => 'nullable|boolean',
+            'protection.block_drag' => 'nullable|boolean',
+            'protection.show_toast' => 'nullable|boolean',
+            'protection.toast_message' => 'nullable|string|max:255',
         ]);
+
+        // Save Protection Settings
+        if (isset($validated['protection'])) {
+            if (array_key_exists('enabled', $validated['protection'])) {
+                AppSetting::set('protection_enabled', $validated['protection']['enabled'] ? 'true' : 'false', 'protection');
+            }
+            if (array_key_exists('block_right_click', $validated['protection'])) {
+                AppSetting::set('protection_block_right_click', $validated['protection']['block_right_click'] ? 'true' : 'false', 'protection');
+            }
+            if (array_key_exists('block_shortcuts', $validated['protection'])) {
+                AppSetting::set('protection_block_shortcuts', $validated['protection']['block_shortcuts'] ? 'true' : 'false', 'protection');
+            }
+            if (array_key_exists('block_drag', $validated['protection'])) {
+                AppSetting::set('protection_block_drag', $validated['protection']['block_drag'] ? 'true' : 'false', 'protection');
+            }
+            if (array_key_exists('show_toast', $validated['protection'])) {
+                AppSetting::set('protection_show_toast', $validated['protection']['show_toast'] ? 'true' : 'false', 'protection');
+            }
+            if (array_key_exists('toast_message', $validated['protection']) && $validated['protection']['toast_message'] !== null) {
+                AppSetting::set('protection_toast_message', trim($validated['protection']['toast_message']), 'protection');
+            }
+        }
 
         // Save Selected Templates for Landing Page
         if (isset($validated['templates']['selected_ids'])) {
