@@ -14,6 +14,7 @@ class Rsvp extends Model
         'wedding_id',
         'invitation_id',
         'guest_id',
+        'name',
         'attending',
         'attendee_count',
         'wishes',
@@ -21,6 +22,11 @@ class Rsvp extends Model
         'approval_token',
         'responded_at',
     ];
+
+    public function getEffectiveNameAttribute(): string
+    {
+        return $this->name ?: ($this->guest?->name ?? 'Tamu Undangan');
+    }
 
     protected function casts(): array
     {

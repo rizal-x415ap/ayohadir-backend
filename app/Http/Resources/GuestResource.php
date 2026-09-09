@@ -28,6 +28,9 @@ class GuestResource extends JsonResource
             'phone' => $this->phone,
             'email' => $this->email,
             'maxAttendees' => $this->max_attendees,
+            'isGroup' => (bool) $this->is_group,
+            'is_group' => (bool) $this->is_group,
+            'rsvpsCount' => (int) ($this->rsvps_count ?? $this->rsvps()->count()),
             'notes' => $this->notes,
             'group' => $this->whenLoaded('group', function () {
                 return $this->group ? [

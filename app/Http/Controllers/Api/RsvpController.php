@@ -38,8 +38,11 @@ class RsvpController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->query('search');
-            $query->whereHas('guest', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhereHas('guest', function ($g) use ($search) {
+                        $g->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -122,55 +125,133 @@ class RsvpController extends Controller
                 ], 404);
             }
 
-            if ($attending && $attendeeCount > $invitation->guest->max_attendees) {
-                return response()->json([
-                    'error' => [
-                        'code' => 'EXCEEDS_MAX_ATTENDEES',
-                        'message' => "Jumlah tamu melebihi batas maksimal ({$invitation->guest->max_attendees} orang).",
-                    ],
-                ], 422);
-            }
-
-            // Aturan 1 Kali Konfirmasi: Tamu terdaftar yang sudah konfirmasi ditolak jika mengirim ulang
-            $existingRsvp = Rsvp::where('wedding_id', $wedding->id)
-                ->where('invitation_id', $invitation->id)
-                ->first();
-
-            if ($existingRsvp) {
-                return response()->json([
-                    'error' => [
-                        'code' => 'ALREADY_CONFIRMED',
-                        'message' => 'Anda sudah mengirimkan konfirmasi kehadiran sebelumnya.',
-                    ],
-                ], 422);
-            }
-
             $guest = $invitation->guest;
+            $isGroup = (bool) $guest->is_group;
 
-            $hasWish = !empty(trim((string) $wishes));
-            $needsApproval = $wedding->wishes_moderation_enabled && $hasWish;
-            $isApproved = !$needsApproval;
-            $approvalToken = $needsApproval ? Str::random(48) : null;
+            if ($isGroup) {
+                // Skenario A2: Tamu Rombongan / Grup (Multi-RSVP dibatasi per IP / Device)
+                $ip = $request->ip() ?? '127.0.0.1';
+                $groupCacheKey = "group_rsvp:{$wedding->id}:{$invitation->id}:" . md5($ip);
 
-            // Create RSVP
-            $rsvp = Rsvp::create([
-                'wedding_id' => $wedding->id,
-                'invitation_id' => $invitation->id,
-                'guest_id' => $guest->id,
-                'attending' => $attending,
-                'attendee_count' => $attendeeCount,
-                'wishes' => $wishes,
-                'is_approved' => $isApproved,
-                'approval_token' => $approvalToken,
-                'responded_at' => now(),
-            ]);
+                if (Cache::has($groupCacheKey)) {
+                    return response()->json([
+                        'error' => [
+                            'code' => 'ALREADY_SUBMITTED_FROM_DEVICE',
+                            'message' => 'Konfirmasi kehadiran untuk rombongan ini telah dikirim dari perangkat/jaringan Anda.',
+                        ],
+                    ], 422);
+                }
 
-            // Update invitation opened status
-            if (!$invitation->opened_at) {
-                $invitation->opened_at = now();
+                $memberName = trim((string) $request->input('name'));
+                if (empty($memberName)) {
+                    return response()->json([
+                        'error' => [
+                            'code' => 'NAME_REQUIRED',
+                            'message' => 'Mohon masukkan nama Anda sebagai anggota rombongan/keluarga.',
+                        ],
+                    ], 422);
+                }
+
+                // Cek apakah nama yang sama persis sudah pernah submit di rombongan ini
+                $existingMember = Rsvp::where('wedding_id', $wedding->id)
+                    ->where('invitation_id', $invitation->id)
+                    ->whereRaw('LOWER(name) = ?', [mb_strtolower($memberName)])
+                    ->first();
+
+                if ($existingMember) {
+                    return response()->json([
+                        'error' => [
+                            'code' => 'MEMBER_ALREADY_CONFIRMED',
+                            'message' => "Nama \"{$memberName}\" sudah tercatat mengirimkan konfirmasi untuk rombongan ini.",
+                        ],
+                    ], 422);
+                }
+
+                if ($attending && $guest->max_attendees > 0 && $attendeeCount > $guest->max_attendees) {
+                    return response()->json([
+                        'error' => [
+                            'code' => 'EXCEEDS_MAX_ATTENDEES',
+                            'message' => "Jumlah tamu melebihi batas maksimal ({$guest->max_attendees} orang).",
+                        ],
+                    ], 422);
+                }
+
+                $hasWish = !empty(trim((string) $wishes));
+                $needsApproval = $wedding->wishes_moderation_enabled && $hasWish;
+                $isApproved = !$needsApproval;
+                $approvalToken = $needsApproval ? Str::random(48) : null;
+
+                // Create RSVP for group member
+                $rsvp = Rsvp::create([
+                    'wedding_id' => $wedding->id,
+                    'invitation_id' => $invitation->id,
+                    'guest_id' => $guest->id,
+                    'name' => $memberName,
+                    'attending' => $attending,
+                    'attendee_count' => $attendeeCount,
+                    'wishes' => $wishes,
+                    'is_approved' => $isApproved,
+                    'approval_token' => $approvalToken,
+                    'responded_at' => now(),
+                ]);
+
+                // Kunci perangkat/IP ini agar tidak spam untuk rombongan ini
+                Cache::put($groupCacheKey, true, now()->addDays(30));
+
+                if (!$invitation->opened_at) {
+                    $invitation->opened_at = now();
+                }
+                $invitation->open_count += 1;
+                $invitation->save();
+            } else {
+                // Skenario A1: Tamu Personal Biasa (Aturan 1 Kali Konfirmasi Total)
+                if ($attending && $attendeeCount > $invitation->guest->max_attendees) {
+                    return response()->json([
+                        'error' => [
+                            'code' => 'EXCEEDS_MAX_ATTENDEES',
+                            'message' => "Jumlah tamu melebihi batas maksimal ({$invitation->guest->max_attendees} orang).",
+                        ],
+                    ], 422);
+                }
+
+                $existingRsvp = Rsvp::where('wedding_id', $wedding->id)
+                    ->where('invitation_id', $invitation->id)
+                    ->first();
+
+                if ($existingRsvp) {
+                    return response()->json([
+                        'error' => [
+                            'code' => 'ALREADY_CONFIRMED',
+                            'message' => 'Anda sudah mengirimkan konfirmasi kehadiran sebelumnya.',
+                        ],
+                    ], 422);
+                }
+
+                $hasWish = !empty(trim((string) $wishes));
+                $needsApproval = $wedding->wishes_moderation_enabled && $hasWish;
+                $isApproved = !$needsApproval;
+                $approvalToken = $needsApproval ? Str::random(48) : null;
+
+                // Create RSVP
+                $rsvp = Rsvp::create([
+                    'wedding_id' => $wedding->id,
+                    'invitation_id' => $invitation->id,
+                    'guest_id' => $guest->id,
+                    'name' => $guest->name,
+                    'attending' => $attending,
+                    'attendee_count' => $attendeeCount,
+                    'wishes' => $wishes,
+                    'is_approved' => $isApproved,
+                    'approval_token' => $approvalToken,
+                    'responded_at' => now(),
+                ]);
+
+                if (!$invitation->opened_at) {
+                    $invitation->opened_at = now();
+                }
+                $invitation->open_count += 1;
+                $invitation->save();
             }
-            $invitation->open_count += 1;
-            $invitation->save();
         } else {
             // Skenario B: Pengunjung Publik (Belum masuk daftar tamu)
             $ip = $request->ip() ?? '127.0.0.1';
@@ -254,6 +335,7 @@ class RsvpController extends Controller
                 'wedding_id' => $wedding->id,
                 'invitation_id' => $invitation->id,
                 'guest_id' => $guest->id,
+                'name' => $name,
                 'attending' => $attending,
                 'attendee_count' => $attendeeCount,
                 'wishes' => $wishes,
@@ -268,7 +350,7 @@ class RsvpController extends Controller
 
         $this->notifyRsvpEvent(
             wedding: $wedding,
-            guestName: $guest->name,
+            guestName: $rsvp->effective_name ?: $guest->name,
             attending: $rsvp->attending,
             attendeeCount: (int) $rsvp->attendee_count,
             wishes: $rsvp->wishes,

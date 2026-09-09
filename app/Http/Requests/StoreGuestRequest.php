@@ -33,6 +33,7 @@ class StoreGuestRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'max_attendees' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'is_group' => ['nullable', 'boolean'],
             'guest_group_id' => [
                 'nullable',
                 Rule::exists('guest_groups', 'id')->where(function ($query) use ($weddingId) {

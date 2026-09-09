@@ -21,12 +21,14 @@ class RsvpResource extends JsonResource
             'id' => $this->id,
             'weddingId' => $this->wedding_id,
             'guestId' => $this->guest_id,
-            'guest' => [
+            'name' => $this->name ?: ($this->guest?->name ?? 'Tamu'),
+            'guest' => $this->guest ? [
                 'id' => $this->guest->id,
                 'name' => $this->guest->name,
                 'phone' => $this->guest->phone,
+                'isGroup' => (bool) $this->guest->is_group,
                 'group' => $this->guest->group?->name,
-            ],
+            ] : null,
             'attending' => (bool) $this->attending,
             'attendeeCount' => $this->attendee_count,
             'wishes' => $this->wishes,

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -19,6 +20,7 @@ class Guest extends Model
         'phone',
         'email',
         'max_attendees',
+        'is_group',
         'notes',
     ];
 
@@ -26,6 +28,7 @@ class Guest extends Model
     {
         return [
             'max_attendees' => 'integer',
+            'is_group' => 'boolean',
         ];
     }
 
@@ -47,5 +50,10 @@ class Guest extends Model
     public function rsvp(): HasOne
     {
         return $this->hasOne(Rsvp::class);
+    }
+
+    public function rsvps(): HasMany
+    {
+        return $this->hasMany(Rsvp::class);
     }
 }

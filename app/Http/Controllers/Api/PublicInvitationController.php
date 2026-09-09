@@ -115,6 +115,8 @@ class PublicInvitationController extends Controller
                             'token' => null,
                             'name' => $matchedGuest->name,
                             'maxAttendees' => $matchedGuest->max_attendees,
+                            'isGroup' => (bool) $matchedGuest->is_group,
+                            'is_group' => (bool) $matchedGuest->is_group,
                             'isRegistered' => true,
                             'existingRsvp' => null,
                         ];
@@ -124,6 +126,8 @@ class PublicInvitationController extends Controller
                             'token' => null,
                             'name' => $searchName,
                             'maxAttendees' => 5,
+                            'isGroup' => false,
+                            'is_group' => false,
                             'isRegistered' => false,
                             'existingRsvp' => null,
                         ];
@@ -132,18 +136,26 @@ class PublicInvitationController extends Controller
             }
 
             if ($invitation && $invitation->guest) {
+                $isGroup = (bool) $invitation->guest->is_group;
+                $ip = $request->ip() ?? '127.0.0.1';
+                $groupCacheKey = "group_rsvp:{$wedding->id}:{$invitation->id}:" . md5($ip);
+                $deviceHasSubmitted = $isGroup && Cache::has($groupCacheKey);
+
                 $guestData = [
                     'token' => $invitation->token,
                     'name' => $invitation->guest->name,
                     'maxAttendees' => $invitation->guest->max_attendees,
+                    'isGroup' => $isGroup,
+                    'is_group' => $isGroup,
                     'isRegistered' => true,
-                    'existingRsvp' => $invitation->rsvp ? [
+                    'hasSubmittedFromDevice' => $deviceHasSubmitted,
+                    'existingRsvp' => (!$isGroup && $invitation->rsvp) ? [
                         'attending' => (bool) $invitation->rsvp->attending,
                         'attendeeCount' => $invitation->rsvp->attendee_count,
                         'wishes' => $invitation->rsvp->wishes,
                     ] : null,
                 ];
-                $hasRsvp = (bool) $invitation->rsvp;
+                $hasRsvp = (!$isGroup && (bool) $invitation->rsvp) || $deviceHasSubmitted;
 
                 if (!$invitation->opened_at) {
                     $invitation->opened_at = now();
@@ -174,7 +186,7 @@ class PublicInvitationController extends Controller
                 ->map(function ($r) {
                     return [
                         'id' => "wish_{$r->id}",
-                        'name' => $r->guest?->name ?? 'Tamu Undangan',
+                        'name' => $r->name ?: ($r->guest?->name ?? 'Tamu Undangan'),
                         'message' => $r->wishes,
                         'timestamp' => $r->responded_at ? $r->responded_at->diffForHumans() : 'Baru saja',
                         'date' => $r->responded_at ? $r->responded_at->format('Y-m-d') : now()->format('Y-m-d'),
