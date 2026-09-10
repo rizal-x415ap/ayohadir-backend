@@ -189,4 +189,54 @@ class AdminManagementTest extends TestCase
 
         $resSelf->assertStatus(422);
     }
+
+    public function test_admin_can_impersonate_user_and_stop_impersonating(): void
+    {
+        // 1. Admin impersonates regular user
+        $response = $this->actingAs($this->admin)
+            ->withHeaders(['referer' => 'http://localhost:5173'])
+            ->postJson("/api/v1/admin/users/{$this->regularUser->id}/impersonate");
+
+        $response->assertOk()
+            ->assertJsonPath('data.user.id', $this->regularUser->id)
+            ->assertJsonPath('data.user.isImpersonating', true);
+
+        $response->assertSessionHas('impersonator_id', $this->admin->id);
+
+        // 2. me() endpoint should reflect the impersonated user and isImpersonating flag
+        $meRes = $this->actingAs($this->regularUser)
+            ->withHeaders(['referer' => 'http://localhost:5173'])
+            ->withSession(['impersonator_id' => $this->admin->id])
+            ->getJson('/api/v1/auth/me');
+        $meRes->assertOk()
+            ->assertJsonPath('data.user.id', $this->regularUser->id)
+            ->assertJsonPath('data.user.isImpersonating', true);
+
+        // 3. Stop impersonating returns back to original admin
+        $stopRes = $this->actingAs($this->regularUser)
+            ->withHeaders(['referer' => 'http://localhost:5173'])
+            ->withSession(['impersonator_id' => $this->admin->id])
+            ->postJson('/api/v1/auth/stop-impersonate');
+        $stopRes->assertOk()
+            ->assertJsonPath('data.user.id', $this->admin->id)
+            ->assertJsonPath('data.user.isImpersonating', false);
+
+        $stopRes->assertSessionMissing('impersonator_id');
+    }
+
+    public function test_non_admin_cannot_impersonate_user(): void
+    {
+        $otherUser = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($this->regularUser)
+            ->postJson("/api/v1/admin/users/{$otherUser->id}/impersonate")
+            ->assertStatus(403);
+    }
+
+    public function test_admin_cannot_impersonate_self(): void
+    {
+        $this->actingAs($this->admin)
+            ->postJson("/api/v1/admin/users/{$this->admin->id}/impersonate")
+            ->assertStatus(422);
+    }
 }

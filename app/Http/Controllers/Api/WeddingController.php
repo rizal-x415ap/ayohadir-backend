@@ -80,7 +80,16 @@ class WeddingController extends Controller
     {
         $this->authorize('update', $wedding);
 
+        $oldSlug = $wedding->slug;
         $wedding->update($request->validated());
+
+        if ($wedding->status === 'published') {
+            if ($oldSlug && $oldSlug !== $wedding->slug) {
+                \Illuminate\Support\Facades\Cache::forget("public:wedding:{$oldSlug}");
+            }
+            $wedding->refresh();
+            app(\App\Services\PublishingService::class)->syncPublishedSnapshot($wedding);
+        }
 
         return new WeddingResource($wedding);
     }

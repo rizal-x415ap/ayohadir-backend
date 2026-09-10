@@ -13,14 +13,25 @@ class PublicSettingController extends Controller
      */
     public function index(): JsonResponse
     {
-        $whatsappNumber = AppSetting::get('admin_whatsapp_number', env('ADMIN_WHATSAPP_NUMBER', '081234567890'));
+        $whatsappNumber = AppSetting::get('admin_whatsapp_number', env('ADMIN_WHATSAPP_NUMBER', '085156476048'));
         $whatsappMessage = AppSetting::get('admin_whatsapp_message', "Halo Admin Ayo Hadir, saya tertarik membuat undangan digital. Mohon info langkah selanjutnya. Terima kasih!");
+        $email = AppSetting::get('admin_email', 'support@ayohadir.id');
+        $phoneNumber = AppSetting::get('admin_phone_number', '085156476048');
+        $address = AppSetting::get('admin_address', 'Pematang Sidamanik, Kab.Simalungung, Sumatera Utara');
         $shopeeUrl = AppSetting::get('shopee_url', 'https://shopee.co.id/ayohadir');
         $instagramUrl = AppSetting::get('instagram_url', 'https://instagram.com/ayohadir.id');
         $tiktokUrl = AppSetting::get('tiktok_url', 'https://tiktok.com/@ayohadir.id');
 
         $defaultHeroImage = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80';
         $defaultBuilderImage = 'https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?auto=format&fit=crop&w=1600&h=1000&q=80';
+
+        $heroImage1 = AppSetting::get('landing_hero_phone_image', $defaultHeroImage);
+        $heroImage2 = AppSetting::get('landing_hero_phone_image_2', '');
+        $heroImage3 = AppSetting::get('landing_hero_phone_image_3', '');
+        $phoneImages = array_values(array_filter([$heroImage1, $heroImage2, $heroImage3]));
+        if (empty($phoneImages)) {
+            $phoneImages = [$defaultHeroImage];
+        }
 
         return response()->json([
             'data' => [
@@ -31,8 +42,12 @@ class PublicSettingController extends Controller
                     'tagline' => AppSetting::get('landing_hero_tagline', 'Platform Undangan Digital #1 di Indonesia'),
                     'title' => AppSetting::get('landing_hero_title', 'Buat Undangan Pernikahan Digital dalam Hitungan Menit'),
                     'subtitle' => AppSetting::get('landing_hero_subtitle', 'Pilih desain elegan, sesuaikan data pengantin dengan mudah, dan bagikan langsung ke WhatsApp keluarga dan kerabat.'),
-                    'phoneImage' => AppSetting::get('landing_hero_phone_image', $defaultHeroImage),
+                    'phoneImage' => $heroImage1,
+                    'phoneImage2' => $heroImage2,
+                    'phoneImage3' => $heroImage3,
+                    'phoneImages' => $phoneImages,
                     'phoneLink' => AppSetting::get('landing_hero_phone_link', ''),
+                    'templatePreviewUrl' => AppSetting::get('landing_hero_template_preview_url', ''),
                     'ctaPrimary' => AppSetting::get('landing_hero_cta_primary', 'Lihat Template'),
                     'ctaSecondary' => AppSetting::get('landing_hero_cta_secondary', 'Buat Undangan Sendiri'),
                 ],
@@ -56,6 +71,9 @@ class PublicSettingController extends Controller
                 'contact' => [
                     'whatsappNumber' => $whatsappNumber,
                     'whatsappMessage' => $whatsappMessage,
+                    'email' => $email,
+                    'phoneNumber' => $phoneNumber,
+                    'address' => $address,
                     'shopeeUrl' => $shopeeUrl,
                     'instagramUrl' => $instagramUrl,
                     'tiktokUrl' => $tiktokUrl,

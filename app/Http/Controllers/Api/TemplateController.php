@@ -71,6 +71,9 @@ class TemplateController extends Controller
             ],
         ];
 
+        // Template baru selalu dibuat dengan status nonaktif (is_active = false) terlebih dahulu
+        $data['is_active'] = false;
+
         $template = Template::create($data);
 
         return (new TemplateResource($template))
@@ -131,6 +134,7 @@ class TemplateController extends Controller
         $cloned = $template->replicate();
         $cloned->name = $template->name . ' (Copy)';
         $cloned->slug = $template->slug . '-copy-' . time();
+        $cloned->is_active = false;
         $cloned->save();
 
         return (new TemplateResource($cloned))

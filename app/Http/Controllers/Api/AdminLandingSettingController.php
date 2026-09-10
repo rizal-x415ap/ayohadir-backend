@@ -27,13 +27,25 @@ class AdminLandingSettingController extends Controller
             ->orderBy('id')
             ->get(['id', 'name', 'slug', 'thumbnail', 'tier', 'category', 'price']);
 
+        $heroImage1 = AppSetting::get('landing_hero_phone_image', $defaultHeroImage);
+        $heroImage2 = AppSetting::get('landing_hero_phone_image_2', '');
+        $heroImage3 = AppSetting::get('landing_hero_phone_image_3', '');
+        $phoneImages = array_values(array_filter([$heroImage1, $heroImage2, $heroImage3]));
+        if (empty($phoneImages)) {
+            $phoneImages = [$defaultHeroImage];
+        }
+
         $data = [
             'hero' => [
                 'tagline' => AppSetting::get('landing_hero_tagline', 'Platform Undangan Digital #1 di Indonesia'),
                 'title' => AppSetting::get('landing_hero_title', 'Buat Undangan Pernikahan Digital dalam Hitungan Menit'),
                 'subtitle' => AppSetting::get('landing_hero_subtitle', 'Pilih desain elegan, sesuaikan data pengantin dengan mudah, dan bagikan langsung ke WhatsApp keluarga dan kerabat.'),
-                'phone_image' => AppSetting::get('landing_hero_phone_image', $defaultHeroImage),
+                'phone_image' => $heroImage1,
+                'phone_image_2' => $heroImage2,
+                'phone_image_3' => $heroImage3,
+                'phone_images' => $phoneImages,
                 'phone_link' => AppSetting::get('landing_hero_phone_link', ''),
+                'template_preview_url' => AppSetting::get('landing_hero_template_preview_url', ''),
                 'cta_primary_text' => AppSetting::get('landing_hero_cta_primary', 'Lihat Template'),
                 'cta_secondary_text' => AppSetting::get('landing_hero_cta_secondary', 'Buat Undangan Sendiri'),
             ],
@@ -49,8 +61,11 @@ class AdminLandingSettingController extends Controller
                 'stat3_label' => AppSetting::get('landing_stat3_label', 'Kirim WhatsApp'),
             ],
             'links' => [
-                'whatsapp_number' => AppSetting::get('admin_whatsapp_number', env('ADMIN_WHATSAPP_NUMBER', '081234567890')),
+                'whatsapp_number' => AppSetting::get('admin_whatsapp_number', env('ADMIN_WHATSAPP_NUMBER', '085156476048')),
                 'whatsapp_message' => AppSetting::get('admin_whatsapp_message', "Halo Admin Ayo Hadir, saya tertarik membuat undangan digital. Mohon info langkah selanjutnya. Terima kasih!"),
+                'email' => AppSetting::get('admin_email', 'support@ayohadir.id'),
+                'phone_number' => AppSetting::get('admin_phone_number', '085156476048'),
+                'address' => AppSetting::get('admin_address', 'Pematang Sidamanik, Kab.Simalungung, Sumatera Utara'),
                 'shopee_url' => AppSetting::get('shopee_url', 'https://shopee.co.id/ayohadir'),
                 'instagram_url' => AppSetting::get('instagram_url', 'https://instagram.com/ayohadir.id'),
                 'tiktok_url' => AppSetting::get('tiktok_url', 'https://tiktok.com/@ayohadir.id'),
@@ -85,7 +100,10 @@ class AdminLandingSettingController extends Controller
             'hero.title' => 'nullable|string|max:200',
             'hero.subtitle' => 'nullable|string|max:500',
             'hero.phone_image' => 'nullable|string|max:1000',
+            'hero.phone_image_2' => 'nullable|string|max:1000',
+            'hero.phone_image_3' => 'nullable|string|max:1000',
             'hero.phone_link' => 'nullable|string|max:1000',
+            'hero.template_preview_url' => 'nullable|string|max:1000',
             'hero.cta_primary_text' => 'nullable|string|max:50',
             'hero.cta_secondary_text' => 'nullable|string|max:50',
 
@@ -98,6 +116,9 @@ class AdminLandingSettingController extends Controller
 
             'links.whatsapp_number' => 'nullable|string|max:30',
             'links.whatsapp_message' => 'nullable|string|max:1000',
+            'links.email' => 'nullable|string|max:255',
+            'links.phone_number' => 'nullable|string|max:50',
+            'links.address' => 'nullable|string|max:500',
             'links.shopee_url' => 'nullable|string|max:500',
             'links.instagram_url' => 'nullable|string|max:500',
             'links.tiktok_url' => 'nullable|string|max:500',
@@ -158,11 +179,20 @@ class AdminLandingSettingController extends Controller
         if (isset($validated['hero']['subtitle'])) {
             AppSetting::set('landing_hero_subtitle', trim($validated['hero']['subtitle']), 'landing');
         }
-        if (isset($validated['hero']['phone_image'])) {
-            AppSetting::set('landing_hero_phone_image', trim($validated['hero']['phone_image']), 'landing');
+        if (array_key_exists('phone_image', $request->input('hero', []))) {
+            AppSetting::set('landing_hero_phone_image', trim($request->input('hero.phone_image') ?? ''), 'landing');
+        }
+        if (array_key_exists('phone_image_2', $request->input('hero', []))) {
+            AppSetting::set('landing_hero_phone_image_2', trim($request->input('hero.phone_image_2') ?? ''), 'landing');
+        }
+        if (array_key_exists('phone_image_3', $request->input('hero', []))) {
+            AppSetting::set('landing_hero_phone_image_3', trim($request->input('hero.phone_image_3') ?? ''), 'landing');
         }
         if (array_key_exists('phone_link', $request->input('hero', []))) {
             AppSetting::set('landing_hero_phone_link', trim($request->input('hero.phone_link') ?? ''), 'landing');
+        }
+        if (array_key_exists('template_preview_url', $request->input('hero', []))) {
+            AppSetting::set('landing_hero_template_preview_url', trim($request->input('hero.template_preview_url') ?? ''), 'landing');
         }
         if (isset($validated['hero']['cta_primary_text'])) {
             AppSetting::set('landing_hero_cta_primary', trim($validated['hero']['cta_primary_text']), 'landing');
@@ -198,6 +228,15 @@ class AdminLandingSettingController extends Controller
         if (isset($validated['links']['whatsapp_message'])) {
             AppSetting::set('admin_whatsapp_message', trim($validated['links']['whatsapp_message']), 'contact');
         }
+        if (isset($validated['links']['email'])) {
+            AppSetting::set('admin_email', trim($validated['links']['email']), 'contact');
+        }
+        if (isset($validated['links']['phone_number'])) {
+            AppSetting::set('admin_phone_number', trim($validated['links']['phone_number']), 'contact');
+        }
+        if (isset($validated['links']['address'])) {
+            AppSetting::set('admin_address', trim($validated['links']['address']), 'contact');
+        }
         if (isset($validated['links']['shopee_url'])) {
             AppSetting::set('shopee_url', trim($validated['links']['shopee_url']), 'contact');
         }
@@ -223,20 +262,27 @@ class AdminLandingSettingController extends Controller
             'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120', // Max 5MB
         ]);
 
+        $slot = (int) $request->input('slot', 1);
+        if ($slot < 1 || $slot > 3) {
+            $slot = 1;
+        }
+
         $file = $request->file('image');
-        $fileName = 'hero_phone_' . Str::random(12) . '.' . $file->getClientOriginalExtension();
+        $fileName = 'hero_phone_' . $slot . '_' . Str::random(12) . '.' . $file->getClientOriginalExtension();
         
         // Save to public storage disk under landing directory
         $path = $file->storeAs('landing', $fileName, 'public');
         $url = Storage::disk('public')->url($path);
 
-        // Also automatically update the setting
-        AppSetting::set('landing_hero_phone_image', $url, 'landing');
+        // Update corresponding slot setting
+        $settingKey = $slot === 1 ? 'landing_hero_phone_image' : "landing_hero_phone_image_{$slot}";
+        AppSetting::set($settingKey, $url, 'landing');
 
         return response()->json([
             'success' => true,
-            'message' => 'Gambar frame HP berhasil diunggah.',
+            'message' => "Gambar frame HP (Slot {$slot}) berhasil diunggah.",
             'url' => $url,
+            'slot' => $slot,
         ]);
     }
 

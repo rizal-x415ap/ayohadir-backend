@@ -21,6 +21,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
         Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
         Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
+        Route::post('/stop-impersonate', [AuthController::class, 'stopImpersonate'])->middleware('auth:sanctum');
         Route::post('/forgot-password/request-otp', [\App\Http\Controllers\Api\Auth\ForgotPasswordController::class, 'requestOtp'])->middleware('throttle:5,1');
         Route::post('/forgot-password/reset', [\App\Http\Controllers\Api\Auth\ForgotPasswordController::class, 'resetPassword'])->middleware('throttle:5,1');
     });
@@ -146,6 +147,7 @@ Route::prefix('v1')->group(function () {
             });
 
             // Admin User Management
+            Route::post('/users/{user}/impersonate', [\App\Http\Controllers\Api\AdminUserController::class, 'impersonate']);
             Route::apiResource('users', \App\Http\Controllers\Api\AdminUserController::class);
 
             // Admin Landing Page Content & Mockup Image Management

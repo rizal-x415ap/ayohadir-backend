@@ -92,6 +92,12 @@ class WeddingContentController extends Controller
 
         $wedding->update($request->validated());
 
+        // If wedding is already published, automatically sync published snapshot and refresh public cache
+        if ($wedding->status === 'published') {
+            $wedding->refresh();
+            app(\App\Services\PublishingService::class)->syncPublishedSnapshot($wedding);
+        }
+
         return response()->json([
             'data' => [
                 'saved' => true,

@@ -82,7 +82,7 @@ class PublishingTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_editing_draft_after_publish_does_not_change_published_snapshot(): void
+    public function test_editing_after_publish_automatically_syncs_to_public_invitation(): void
     {
         $user = User::factory()->create();
         $wedding = Wedding::factory()->create([
@@ -97,21 +97,21 @@ class PublishingTest extends TestCase
         // Publish snapshot
         $this->actingAs($user)->postJson('/api/v1/weddings/' . $wedding->id . '/publish');
 
-        // Edit draft in User Editor
+        // Edit content in User Editor while published
         $this->actingAs($user)->putJson('/api/v1/weddings/' . $wedding->id . '/content', [
             'bride_name' => 'Mutated Draft Name',
         ]);
 
-        // Verify draft is updated in database
+        // Verify content is updated in database
         $this->assertDatabaseHas('weddings', [
             'id' => $wedding->id,
             'bride_name' => 'Mutated Draft Name',
         ]);
 
-        // Verify public endpoint STILL serves the original snapshot
+        // Verify public endpoint IMMEDIATELY serves the updated name without unpublishing
         $publicRes = $this->getJson('/api/v1/public/invitations/original-wedding');
         $publicRes->assertStatus(200)
-            ->assertJsonPath('data.wedding.brideName', 'Original Bride');
+            ->assertJsonPath('data.wedding.brideName', 'Mutated Draft Name');
     }
 
     public function test_owner_can_unpublish_wedding(): void

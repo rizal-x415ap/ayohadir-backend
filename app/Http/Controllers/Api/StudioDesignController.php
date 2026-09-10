@@ -92,6 +92,11 @@ class StudioDesignController extends Controller
         $design->version = ($design->version ?? 0) + 1;
         $design->save();
 
+        // If wedding is already published, automatically sync published snapshot and refresh public cache
+        if ($wedding->status === 'published') {
+            app(\App\Services\PublishingService::class)->syncPublishedSnapshot($wedding);
+        }
+
         return response()->json([
             'data' => [
                 'id' => $design->id,

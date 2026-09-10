@@ -58,10 +58,12 @@ class TemplateTest extends TestCase
         ]);
 
         $response->assertStatus(201)
-            ->assertJsonPath('data.slug', 'luxury-emerald');
+            ->assertJsonPath('data.slug', 'luxury-emerald')
+            ->assertJsonPath('data.isActive', false);
 
         $this->assertDatabaseHas('templates', [
             'slug' => 'luxury-emerald',
+            'is_active' => false,
         ]);
     }
 
@@ -90,14 +92,20 @@ class TemplateTest extends TestCase
             'schema_version' => 1,
             'schema' => ['schemaVersion' => 1, 'sections' => []],
             'contract' => ['sections' => []],
+            'is_active' => true,
         ]);
 
         $response = $this->actingAs($admin)->postJson('/api/v1/templates/' . $template->id . '/duplicate');
 
         $response->assertStatus(201)
-            ->assertJsonPath('data.name', 'Original Template (Copy)');
+            ->assertJsonPath('data.name', 'Original Template (Copy)')
+            ->assertJsonPath('data.isActive', false);
 
         $this->assertDatabaseCount('templates', 2);
+        $this->assertDatabaseHas('templates', [
+            'slug' => $response->json('data.slug'),
+            'is_active' => false,
+        ]);
     }
 
     public function test_user_can_apply_template_to_their_wedding(): void

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
@@ -119,6 +120,47 @@ class AdminUserController extends Controller
 
         return response()->json([
             'message' => 'Pengguna berhasil dihapus.',
+        ]);
+    }
+
+    /**
+     * Impersonate a user as administrator.
+     */
+    public function impersonate(Request $request, User $user): JsonResponse
+    {
+        $admin = $request->user();
+
+        if ($admin->id === $user->id) {
+            return response()->json([
+                'message' => 'Anda tidak dapat mengimpersonasi akun Anda sendiri.',
+            ], 422);
+        }
+
+        // Store original admin ID in session
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+            $request->session()->put('impersonator_id', $admin->id);
+        }
+
+        // Login as the target user
+        Auth::guard('web')->login($user);
+
+        return response()->json([
+            'message' => "Berhasil masuk sebagai pengguna {$user->name}.",
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'timezone' => $user->timezone,
+                    'locale' => $user->locale,
+                    'emailVerifiedAt' => $user->email_verified_at?->toIso8601String(),
+                    'createdAt' => $user->created_at->toIso8601String(),
+                    'updatedAt' => $user->updated_at->toIso8601String(),
+                    'isImpersonating' => true,
+                ],
+            ],
         ]);
     }
 }

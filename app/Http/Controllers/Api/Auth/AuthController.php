@@ -106,9 +106,58 @@ class AuthController extends Controller
             ], 401);
         }
 
+        $transformed = $this->transformUser($user);
+        $transformed['isImpersonating'] = $request->hasSession() && $request->session()->has('impersonator_id');
+
         return response()->json([
             'data' => [
-                'user' => $this->transformUser($user),
+                'user' => $transformed,
+            ],
+            'meta' => [
+                'timestamp' => now()->toIso8601String(),
+            ],
+        ]);
+    }
+
+    /**
+     * Stop impersonating and return to administrator account.
+     */
+    public function stopImpersonate(Request $request): JsonResponse
+    {
+        if (!$request->hasSession() || !$request->session()->has('impersonator_id')) {
+            return response()->json([
+                'error' => [
+                    'code' => 'NOT_IMPERSONATING',
+                    'message' => 'Anda tidak sedang berada dalam sesi impersonasi.',
+                ],
+            ], 400);
+        }
+
+        $adminId = $request->session()->pull('impersonator_id');
+        $admin = User::find($adminId);
+
+        if (!$admin || !$admin->isAdmin()) {
+            return response()->json([
+                'error' => [
+                    'code' => 'INVALID_IMPERSONATOR',
+                    'message' => 'Akun administrator asal tidak ditemukan.',
+                ],
+            ], 403);
+        }
+
+        Auth::guard('web')->login($admin);
+
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
+
+        $transformed = $this->transformUser($admin);
+        $transformed['isImpersonating'] = false;
+
+        return response()->json([
+            'message' => 'Kembali ke sesi administrator.',
+            'data' => [
+                'user' => $transformed,
             ],
             'meta' => [
                 'timestamp' => now()->toIso8601String(),

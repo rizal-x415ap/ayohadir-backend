@@ -40,28 +40,30 @@ class PublishingService
     }
 
     /**
-     * Publish wedding: resolve content binding, freeze snapshot, cache, and update status.
+     * Synchronize published schema snapshot and cache for a live published wedding.
+     * Guarantees that edits made in user studio are immediately reflected publicly.
      */
-    public function publish(Wedding $wedding): array
+    public function syncPublishedSnapshot(Wedding $wedding): ?array
     {
-        $errors = $this->validateForPublishing($wedding);
-        if (!empty($errors)) {
-            throw ValidationException::withMessages($errors);
+        if ($wedding->status !== 'published') {
+            return null;
         }
 
         $now = now();
+        $design = $wedding->design ?? Design::where('wedding_id', $wedding->id)->first();
+        if (!$design) {
+            $design = new Design(['wedding_id' => $wedding->id]);
+        }
 
-        // Load design and ensure canonical visual schema
-        $design = $wedding->design ?? new Design(['wedding_id' => $wedding->id]);
         $schema = $design->schema;
         if (!$schema || empty($schema['sections'])) {
             $schema = $wedding->template?->schema;
         }
 
-        // Build canonical frozen published snapshot
         $publishedSnapshot = [
             'snapshotVersion' => 1,
-            'publishedAt' => $now->toIso8601String(),
+            'publishedAt' => $wedding->published_at ? $wedding->published_at->toIso8601String() : $now->toIso8601String(),
+            'updatedAt' => $now->toIso8601String(),
             'schema' => $schema,
             'design' => [
                 'schema' => $schema,
@@ -100,20 +102,32 @@ class PublishingService
             ],
         ];
 
-        // Upsert design published_schema
         $design->published_schema = $publishedSnapshot;
-        $design->published_at = $now;
         $design->save();
 
-        // Update wedding record
+        $cacheKey = "public:wedding:{$wedding->slug}";
+        Cache::forget($cacheKey);
+        Cache::put($cacheKey, $publishedSnapshot, now()->addDays(7));
+
+        return $publishedSnapshot;
+    }
+
+    /**
+     * Publish wedding: resolve content binding, freeze snapshot, cache, and update status.
+     */
+    public function publish(Wedding $wedding): array
+    {
+        $errors = $this->validateForPublishing($wedding);
+        if (!empty($errors)) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        $now = now();
         $wedding->status = 'published';
         $wedding->published_at = $now;
         $wedding->save();
 
-        // Cache Invalidation and Refresh
-        $cacheKey = "public:wedding:{$wedding->slug}";
-        Cache::forget($cacheKey);
-        Cache::put($cacheKey, $publishedSnapshot, now()->addDays(7));
+        $snapshot = $this->syncPublishedSnapshot($wedding);
 
         $publicUrl = url("/{$wedding->slug}");
 
@@ -121,7 +135,7 @@ class PublishingService
             'status' => 'published',
             'publishedAt' => $now->toIso8601String(),
             'publicUrl' => $publicUrl,
-            'snapshot' => $publishedSnapshot,
+            'snapshot' => $snapshot,
         ];
     }
 
@@ -132,6 +146,11 @@ class PublishingService
     {
         $wedding->status = 'unpublished';
         $wedding->save();
+
+        if ($wedding->design) {
+            $wedding->design->published_schema = null;
+            $wedding->design->save();
+        }
 
         // Invalidate public page cache
         $cacheKey = "public:wedding:{$wedding->slug}";
