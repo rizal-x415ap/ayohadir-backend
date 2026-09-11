@@ -211,7 +211,8 @@ class TemplateController extends Controller
         }
 
         // If inactive, only allow authenticated admin
-        if (!$template->is_active && !$request->user('sanctum')?->isAdmin()) {
+        $user = $request->user('sanctum') ?? auth('sanctum')->user() ?? auth()->user();
+        if (!$template->is_active && (!$user || !$user->isAdmin())) {
             abort(404, 'Template tidak ditemukan atau belum aktif.');
         }
 
