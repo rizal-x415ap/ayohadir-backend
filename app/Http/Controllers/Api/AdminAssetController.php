@@ -50,6 +50,11 @@ class AdminAssetController extends Controller
                     $q->where('category', 'music')
                       ->orWhere('type', 'audio');
                 });
+            } elseif ($request->query('category') === 'video') {
+                $query->where(function ($q) {
+                    $q->where('category', 'video')
+                      ->orWhere('type', 'video');
+                });
             } elseif ($request->query('category') === 'gif') {
                 $query->where(function ($q) {
                     $q->where('category', 'gif')

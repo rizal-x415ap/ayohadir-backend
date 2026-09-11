@@ -42,9 +42,9 @@ class MediaService
         // Determine media classification type
         $type = match (true) {
             $category === 'music' || in_array($extension, $audioExtensions) || str_starts_with($mime, 'audio/') => 'audio',
+            $category === 'video' || in_array($extension, $videoExtensions) || str_starts_with($mime, 'video/') => 'video',
             $extension === 'svg' || $mime === 'image/svg+xml' => 'vector',
             str_starts_with($mime, 'image/') => 'image',
-            in_array($extension, $videoExtensions) || str_starts_with($mime, 'video/') => 'video',
             default => 'image',
         };
 
@@ -98,8 +98,8 @@ class MediaService
             $storagePath = $file->storeAs($directory, $targetFilename, $disk);
         }
 
-        // If title is not specified and type is audio, fallback to clean filename
-        if (empty($title) && $type === 'audio') {
+        // If title is not specified and type is audio or video, fallback to clean filename
+        if (empty($title) && ($type === 'audio' || $type === 'video')) {
             $title = pathinfo($originalFilename, PATHINFO_FILENAME);
         }
 
