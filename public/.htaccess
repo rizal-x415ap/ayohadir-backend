@@ -53,6 +53,9 @@
 </IfModule>
 <IfModule mod_headers.c>
     <FilesMatch "\.(ico|jpe?g|png|gif|webp|svg|woff2?|ttf|eot|mp3)$">
+        Header set Access-Control-Allow-Origin "*"
+        Header set Access-Control-Allow-Methods "GET, OPTIONS"
+        Header set Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
 </IfModule>

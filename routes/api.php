@@ -39,6 +39,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/invitations/{slug}/wishes', [\App\Http\Controllers\Api\RsvpController::class, 'submitWishPublic'])->middleware('throttle:20,1');
         Route::post('/{slug}/wishes', [\App\Http\Controllers\Api\RsvpController::class, 'submitWishPublic'])->middleware('throttle:20,1');
         Route::post('/wishes/approve', [\App\Http\Controllers\Api\RsvpController::class, 'approvePublicWish'])->middleware('throttle:20,1');
+        Route::get('/svg-content', [\App\Http\Controllers\Api\PublicSvgController::class, 'show']);
     });
 
     // Webhook Callback for Duitku Payment Gateway (Public, Unauthenticated, Excluded from CSRF)
