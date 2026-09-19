@@ -283,35 +283,24 @@ class PublicOgController extends Controller
 
         // Build Title
         if (!empty($guestName)) {
-            $title = "Undangan Pernikahan untuk {$guestName} — {$couple}";
+            $title = "The Wedding of {$couple} — Undangan untuk {$guestName}";
         } else {
             $title = "The Wedding of {$couple} — Ayo Hadir";
         }
 
-        // Build Description
-        $dateStr = $wedding->wedding_date ? $wedding->wedding_date->translatedFormat('l, d F Y') : null;
-        $venue = $wedding->venue_name ? " di {$wedding->venue_name}" : '';
-
+        // Build Simple Description (without date)
         if (!empty($guestName)) {
-            $description = "Kepada Yth. Bapak/Ibu/Saudara/i {$guestName}, tanpa mengurangi rasa hormat, kami mengundang Anda untuk menghadiri momen bahagia pernikahan {$couple}" . ($dateStr ? " pada {$dateStr}{$venue}." : '.') . " Buka undangan digital di sini.";
+            $description = "Kepada Yth. {$guestName}, kami mengundang Anda untuk menghadiri momen bahagia pernikahan {$couple}. Buka undangan digital di sini.";
         } else {
-            $description = "Tanpa mengurangi rasa hormat, kami mengundang Bapak/Ibu/Saudara/i untuk menghadiri momen bahagia pernikahan {$couple}" . ($dateStr ? " pada {$dateStr}{$venue}." : '.') . " Buka undangan digital di sini.";
+            $description = "Kami mengundang Bapak/Ibu/Saudara/i untuk menghadiri momen bahagia pernikahan {$couple}. Buka undangan digital di sini.";
         }
 
-        // Resolve couple photo marked in schema/customContent
         $rawSnapshot = $wedding->design?->published_schema ?? [];
         $schema = !empty($rawSnapshot['schema']) 
             ? $rawSnapshot['schema'] 
             : ($wedding->design?->schema ?? $wedding->template?->schema);
-        $customContent = $wedding->custom_content ?? [];
-        $fallback = $wedding->cover_image_url ?? $wedding->template?->thumbnail ?? null;
 
-        $ogImage = $this->extractCouplePhoto($schema, $customContent, $fallback, $wedding);
         $frontendUrl = $this->getPublicFrontendUrl();
-
-        if (empty($ogImage)) {
-            $ogImage = "{$frontendUrl}/images/og-ayohadir.png";
-        }
 
         // Resolve primary theme color
         $primaryColor = $schema['theme']['colors']['primary'] ?? '#03AC0E';
@@ -323,7 +312,7 @@ class PublicOgController extends Controller
             'slug' => $slug,
             'title' => $title,
             'description' => $description,
-            'image' => $ogImage,
+            'image' => null,
             'url' => $canonicalUrl,
             'siteName' => 'Ayo Hadir',
             'themeColor' => $primaryColor,
@@ -351,16 +340,9 @@ class PublicOgController extends Controller
             return null;
         }
 
-        $title = "Template Undangan: {$template->name} — Ayo Hadir";
-        $description = $template->description ?: "Pratinjau tema undangan digital eksklusif {$template->name} di Ayo Hadir. Desain elegan, responsif, dan siap digunakan.";
-
-        // Resolve couple photo marked in template schema
-        $ogImage = $this->extractCouplePhoto($template->schema, [], $template->thumbnail);
+        $title = "Template {$template->name} — Ayo Hadir";
+        $description = "Pratinjau template undangan pernikahan digital {$template->name} di Ayo Hadir.";
         $frontendUrl = $this->getPublicFrontendUrl();
-
-        if (empty($ogImage)) {
-            $ogImage = "{$frontendUrl}/images/og-ayohadir.png";
-        }
 
         $primaryColor = $template->schema['theme']['colors']['primary'] ?? '#03AC0E';
         $canonicalUrl = "{$frontendUrl}/templates/{$slug}";
@@ -371,7 +353,7 @@ class PublicOgController extends Controller
             'name' => $template->name,
             'title' => $title,
             'description' => $description,
-            'image' => $ogImage,
+            'image' => null,
             'url' => $canonicalUrl,
             'siteName' => 'Ayo Hadir',
             'themeColor' => $primaryColor,
