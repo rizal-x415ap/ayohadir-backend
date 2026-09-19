@@ -14,17 +14,7 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # ----------------------------------------------------------------------
-    # Lindungi Aset Media (Boleh diakses Frontend AyoHadir, Direct, & Crawler Media Sosial)
-    # ----------------------------------------------------------------------
-    RewriteCond %{REQUEST_URI} ^/storage/ [NC]
-    RewriteCond %{HTTP_USER_AGENT} !(facebookexternalhit|WhatsApp|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Googlebot|bingbot|Applebot) [NC]
-    RewriteCond %{HTTP_REFERER} !^$
-    RewriteCond %{HTTP_REFERER} !^https?://(www\.)?ayohadir\.id [NC]
-    RewriteCond %{HTTP_REFERER} !^https?://api\.ayohadir\.id [NC]
-    RewriteCond %{HTTP_REFERER} !^http://localhost [NC]
-    RewriteCond %{HTTP_REFERER} !^http://127\.0\.0\.1 [NC]
-    RewriteRule .*\.(jpe?g|png|gif|webp|svg|mp3|mp4)$ - [F,NC,L]
+
 
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
