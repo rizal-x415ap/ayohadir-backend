@@ -11,6 +11,12 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
+// Fallback un-prefixed public OG endpoints (for flexible frontend reverse-proxies)
+Route::get('/public/og/template/{slug}', [\App\Http\Controllers\Api\PublicOgController::class, 'templateOg']);
+Route::get('/public/og/{slug}', [\App\Http\Controllers\Api\PublicOgController::class, 'weddingOg']);
+Route::get('/og/template/{slug}', [\App\Http\Controllers\Api\PublicOgController::class, 'templateOg']);
+Route::get('/og/{slug}', [\App\Http\Controllers\Api\PublicOgController::class, 'weddingOg']);
+
 Route::prefix('v1')->group(function () {
     // System Health Check
     Route::get('/health', HealthCheckController::class);
