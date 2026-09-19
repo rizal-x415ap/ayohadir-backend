@@ -72,37 +72,46 @@ class PublicOgController extends Controller
     }
 
     /**
+     * Check if a URL is a generic placeholder or Unsplash dummy image.
+     */
+    private function isPlaceholderUrl(?string $url): bool
+    {
+        if (empty($url) || !is_string($url)) {
+            return true;
+        }
+        $lower = strtolower(trim($url));
+        if ($lower === '' || $lower === 'null' || $lower === 'undefined') {
+            return true;
+        }
+        return str_contains($lower, 'photo-1519741497674-611481863552') ||
+               str_contains($lower, 'photo-1534528741775-53994a69daeb') ||
+               str_contains($lower, 'photo-1507003211169-0a1dd7228f2d') ||
+               str_contains($lower, 'photo-1511285560929-80b456fea0bc') ||
+               str_contains($lower, 'placeholder.com') ||
+               str_contains($lower, 'via.placeholder');
+    }
+
+    /**
      * Helper to extract the marked couple photo from schema, custom content, or media.
      */
     private function extractCouplePhoto(?array $schema, ?array $customContent, ?string $fallbackCover = null, ?Wedding $wedding = null): ?string
     {
-        // 1. Direct custom content bindings
-        if (!empty($customContent['couple.couplePhotoUrl'])) {
-            return $this->normalizeImageUrl($customContent['couple.couplePhotoUrl']);
-        }
-        if (!empty($customContent['couple']['couplePhotoUrl'])) {
-            return $this->normalizeImageUrl($customContent['couple']['couplePhotoUrl']);
-        }
-        if (!empty($customContent['couplePhotoUrl'])) {
-            return $this->normalizeImageUrl($customContent['couplePhotoUrl']);
-        }
-        if (!empty($customContent['couple.coverPhoto'])) {
-            return $this->normalizeImageUrl($customContent['couple.coverPhoto']);
-        }
-        if (!empty($customContent['couple']['coverPhoto'])) {
-            return $this->normalizeImageUrl($customContent['couple']['coverPhoto']);
-        }
-        if (!empty($customContent['coverPhoto'])) {
-            return $this->normalizeImageUrl($customContent['coverPhoto']);
-        }
-        if (!empty($customContent['customContent.coverPhotoUrl'])) {
-            return $this->normalizeImageUrl($customContent['customContent.coverPhotoUrl']);
-        }
-        if (!empty($customContent['coverPhotoUrl'])) {
-            return $this->normalizeImageUrl($customContent['coverPhotoUrl']);
-        }
-        if (!empty($customContent['customContent.desktopCoverBackgroundPhotoUrl'])) {
-            return $this->normalizeImageUrl($customContent['customContent.desktopCoverBackgroundPhotoUrl']);
+        // 1. Direct custom content bindings (ignoring dummy placeholder URLs)
+        $candidates = [
+            $customContent['couple.couplePhotoUrl'] ?? null,
+            $customContent['couple']['couplePhotoUrl'] ?? null,
+            $customContent['couplePhotoUrl'] ?? null,
+            $customContent['couple.coverPhoto'] ?? null,
+            $customContent['couple']['coverPhoto'] ?? null,
+            $customContent['coverPhoto'] ?? null,
+            $customContent['customContent.coverPhotoUrl'] ?? null,
+            $customContent['coverPhotoUrl'] ?? null,
+            $customContent['customContent.desktopCoverBackgroundPhotoUrl'] ?? null,
+        ];
+        foreach ($candidates as $cand) {
+            if (!empty($cand) && is_string($cand) && !$this->isPlaceholderUrl($cand)) {
+                return $this->normalizeImageUrl($cand);
+            }
         }
 
         // 2. Wedding couple_photo_id relationship
