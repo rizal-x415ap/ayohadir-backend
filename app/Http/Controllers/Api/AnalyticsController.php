@@ -93,7 +93,7 @@ class AnalyticsController extends Controller
                     'status' => $wedding->status,
                     'publishedAt' => $wedding->published_at?->toIso8601String(),
                     'slug' => $wedding->slug,
-                    'publicUrl' => url("/{$wedding->slug}"),
+                    'publicUrl' => rtrim(config('app.frontend_url', env('FRONTEND_URL', 'https://ayohadir.id')), '/') . "/{$wedding->slug}",
                 ],
             ],
             'meta' => [

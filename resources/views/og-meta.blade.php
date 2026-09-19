@@ -2,17 +2,20 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>{{ $title }} — Ayo Hadir</title>
+    <title>{{ str_contains($title, 'Ayo Hadir') ? $title : "{$title} — Ayo Hadir" }}</title>
     <meta name="description" content="{{ $description }}">
     <meta name="theme-color" content="{{ $themeColor ?? '#03AC0E' }}">
 
-    <!-- Open Graph (Facebook, WhatsApp, Telegram) -->
+    <!-- Open Graph (Facebook, WhatsApp, Telegram, LinkedIn) -->
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ayo Hadir">
+    <meta property="og:url" content="{{ $url }}">
     <meta property="og:title" content="{{ $title }}">
     <meta property="og:description" content="{{ $description }}">
     <meta property="og:image" content="{{ $image }}">
-    <meta property="og:url" content="{{ $url }}">
-    <meta property="og:site_name" content="Ayo Hadir">
+    <meta property="og:image:secure_url" content="{{ $image }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">

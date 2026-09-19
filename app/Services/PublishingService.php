@@ -129,7 +129,7 @@ class PublishingService
 
         $snapshot = $this->syncPublishedSnapshot($wedding);
 
-        $publicUrl = url("/{$wedding->slug}");
+        $publicUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'https://ayohadir.id')), '/') . "/{$wedding->slug}";
 
         return [
             'status' => 'published',
