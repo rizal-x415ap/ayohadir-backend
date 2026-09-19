@@ -100,6 +100,10 @@ class TemplateController extends Controller
         }
         $template->update($data);
 
+        try {
+            app(\App\Services\CloudflareOgSyncService::class)->syncTemplate($template);
+        } catch (\Throwable) {}
+
         return new TemplateResource($template);
     }
 

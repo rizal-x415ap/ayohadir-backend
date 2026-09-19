@@ -186,6 +186,24 @@ class PublicOgController extends Controller
         return null;
     }
 
+    private function getPublicFrontendUrl(): string
+    {
+        $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'https://ayohadir.id')), '/');
+        if (str_contains($frontendUrl, 'localhost') || str_contains($frontendUrl, '127.0.0.1')) {
+            return 'https://ayohadir.id';
+        }
+        return $frontendUrl;
+    }
+
+    private function getPublicBackendUrl(): string
+    {
+        $backendUrl = rtrim(config('app.url', env('APP_URL', 'https://api.ayohadir.id')), '/');
+        if (str_contains($backendUrl, 'localhost') || str_contains($backendUrl, '127.0.0.1')) {
+            return 'https://api.ayohadir.id';
+        }
+        return $backendUrl;
+    }
+
     /**
      * Ensure any image URL is complete, absolute (https://...) and accessible to social crawlers.
      */
@@ -203,8 +221,8 @@ class PublicOgController extends Controller
             return 'https:' . $trimmed;
         }
 
-        $backendUrl = rtrim(config('app.url', env('APP_URL', 'https://api.ayohadir.id')), '/');
-        $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'https://ayohadir.id')), '/');
+        $backendUrl = $this->getPublicBackendUrl();
+        $frontendUrl = $this->getPublicFrontendUrl();
 
         if (str_starts_with($trimmed, '/storage/') || str_starts_with($trimmed, 'storage/')) {
             return $backendUrl . '/' . ltrim($trimmed, '/');
@@ -289,7 +307,7 @@ class PublicOgController extends Controller
         $fallback = $wedding->cover_image_url ?? $wedding->template?->thumbnail ?? null;
 
         $ogImage = $this->extractCouplePhoto($schema, $customContent, $fallback, $wedding);
-        $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'https://ayohadir.id')), '/');
+        $frontendUrl = $this->getPublicFrontendUrl();
 
         if (empty($ogImage)) {
             $ogImage = "{$frontendUrl}/images/og-ayohadir.png";
@@ -338,7 +356,7 @@ class PublicOgController extends Controller
 
         // Resolve couple photo marked in template schema
         $ogImage = $this->extractCouplePhoto($template->schema, [], $template->thumbnail);
-        $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'https://ayohadir.id')), '/');
+        $frontendUrl = $this->getPublicFrontendUrl();
 
         if (empty($ogImage)) {
             $ogImage = "{$frontendUrl}/images/og-ayohadir.png";

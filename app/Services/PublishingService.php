@@ -109,6 +109,10 @@ class PublishingService
         Cache::forget($cacheKey);
         Cache::put($cacheKey, $publishedSnapshot, now()->addDays(7));
 
+        try {
+            app(\App\Services\CloudflareOgSyncService::class)->syncWedding($wedding);
+        } catch (\Throwable) {}
+
         return $publishedSnapshot;
     }
 
