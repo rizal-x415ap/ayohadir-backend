@@ -312,7 +312,7 @@ class PublicOgController extends Controller
             'slug' => $slug,
             'title' => $title,
             'description' => $description,
-            'image' => null,
+            'image' => "{$frontendUrl}/amplope.png",
             'url' => $canonicalUrl,
             'siteName' => 'Ayo Hadir',
             'themeColor' => $primaryColor,
