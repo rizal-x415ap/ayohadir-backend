@@ -33,12 +33,7 @@
     RewriteRule ^ index.php [L]
 </IfModule>
 
-<IfModule mod_headers.c>
-    Header set Access-Control-Allow-Origin "*"
-    Header set Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
-    Header set Access-Control-Allow-Headers "*"
-    Header set Access-Control-Expose-Headers "Content-Length, Content-Range, Accept-Ranges"
-</IfModule>
+
 
 # Increase maximum request body size (50MB)
 <IfModule mod_core.c>
