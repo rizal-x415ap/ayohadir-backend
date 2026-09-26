@@ -15,19 +15,28 @@
     RewriteRule ^ %1 [L,R=301]
 
     # ----------------------------------------------------------------------
-    # Lindungi Aset Media (Hanya boleh diakses oleh Frontend AyoHadir)
+    # Lindungi Aset Media (Hanya boleh diakses oleh Frontend AyoHadir & Local Network)
     # ----------------------------------------------------------------------
     RewriteCond %{REQUEST_URI} ^/storage/ [NC]
     RewriteCond %{HTTP_REFERER} !^https?://(www\.)?ayohadir\.id [NC]
     RewriteCond %{HTTP_REFERER} !^https?://api\.ayohadir\.id [NC]
     RewriteCond %{HTTP_REFERER} !^http://localhost [NC]
     RewriteCond %{HTTP_REFERER} !^http://127\.0\.0\.1 [NC]
+    RewriteCond %{HTTP_REFERER} !^http://192\.168\. [NC]
+    RewriteCond %{HTTP_REFERER} !^http://10\. [NC]
+    RewriteCond %{HTTP_REFERER} !^http://172\.(1[6-9]|2[0-9]|3[0-1])\. [NC]
     RewriteRule .*\.(jpe?g|png|gif|webp|svg|mp3|mp4)$ - [F,NC,L]
 
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+    Header set Access-Control-Allow-Headers "*"
 </IfModule>
 
 # Increase maximum request body size (50MB)
