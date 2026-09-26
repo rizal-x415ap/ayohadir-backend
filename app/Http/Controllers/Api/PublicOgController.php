@@ -10,6 +10,8 @@ use App\Models\Wedding;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PublicOgController extends Controller
 {
@@ -301,18 +303,23 @@ class PublicOgController extends Controller
             : ($wedding->design?->schema ?? $wedding->template?->schema);
 
         $frontendUrl = $this->getPublicFrontendUrl();
+        $backendUrl = $this->getPublicBackendUrl();
 
         // Resolve primary theme color
         $primaryColor = $schema['theme']['colors']['primary'] ?? '#03AC0E';
 
         $canonicalUrl = "{$frontendUrl}/{$slug}" . (!empty($guestName) ? '?to=' . urlencode($guestName) : '');
 
+        $customContent = $rawSnapshot['customContent'] ?? $wedding->design?->custom_content ?? [];
+        $hasCouplePhoto = (bool) $this->extractCouplePhoto($schema, $customContent, null, $wedding);
+        $ogImageUrl = $hasCouplePhoto ? "{$backendUrl}/api/v1/public/og-image/{$slug}" : "{$frontendUrl}/amplope.png";
+
         return [
             'type' => 'wedding',
             'slug' => $slug,
             'title' => $title,
             'description' => $description,
-            'image' => "{$frontendUrl}/amplope.png",
+            'image' => $ogImageUrl,
             'url' => $canonicalUrl,
             'siteName' => 'Ayo Hadir',
             'themeColor' => $primaryColor,
@@ -358,6 +365,71 @@ class PublicOgController extends Controller
             'siteName' => 'Ayo Hadir',
             'themeColor' => $primaryColor,
         ];
+    }
+
+    /**
+     * Dynamically serve the couple photo for social media Open Graph cards.
+     * Keeps internal storage safe from unauthorized hotlinking while ensuring
+     * WhatsApp, Facebook, Twitter, and Telegram crawlers render rich photo cards.
+     */
+    public function renderWeddingOgImage(Request $request, string $slug)
+    {
+        $wedding = Wedding::where('slug', $slug)
+            ->with(['design', 'template'])
+            ->first();
+
+        $frontendUrl = $this->getPublicFrontendUrl();
+        $fallbackUrl = "{$frontendUrl}/amplope.png";
+
+        if (!$wedding) {
+            return redirect($fallbackUrl);
+        }
+
+        $rawSnapshot = $wedding->design?->published_schema ?? [];
+        $schema = !empty($rawSnapshot['schema']) 
+            ? $rawSnapshot['schema'] 
+            : ($wedding->design?->schema ?? $wedding->template?->schema);
+
+        $customContent = $rawSnapshot['customContent'] ?? $wedding->design?->custom_content ?? [];
+
+        $couplePhotoUrl = $this->extractCouplePhoto($schema, $customContent, null, $wedding);
+
+        if (!$couplePhotoUrl) {
+            return redirect($fallbackUrl);
+        }
+
+        // If the couple photo is in internal storage (/storage/...)
+        $cleanPath = $couplePhotoUrl;
+        if (preg_match('#/storage/(.+)#', $couplePhotoUrl, $matches)) {
+            $cleanPath = $matches[1];
+        }
+        $cleanPath = explode('?', $cleanPath)[0];
+        $cleanPath = explode('#', $cleanPath)[0];
+
+        // Security check: prevent directory traversal
+        if (str_contains($cleanPath, '..')) {
+            return redirect($fallbackUrl);
+        }
+
+        if (Storage::disk('public')->exists($cleanPath)) {
+            $fullPath = Storage::disk('public')->path($cleanPath);
+            $mimeType = Storage::disk('public')->mimeType($cleanPath) ?: 'image/jpeg';
+
+            $response = new BinaryFileResponse($fullPath, 200, [
+                'Content-Type' => $mimeType,
+                'Access-Control-Allow-Origin' => '*',
+                'Cache-Control' => 'public, max-age=86400, s-maxage=604800',
+            ]);
+            $response->prepare($request);
+            return $response;
+        }
+
+        // If external absolute URL
+        if (filter_var($couplePhotoUrl, FILTER_VALIDATE_URL)) {
+            return redirect($couplePhotoUrl);
+        }
+
+        return redirect($fallbackUrl);
     }
 
     /**

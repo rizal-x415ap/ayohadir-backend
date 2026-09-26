@@ -16,7 +16,12 @@
 
     # ----------------------------------------------------------------------
     # Lindungi Aset Media (Hanya boleh diakses oleh Frontend AyoHadir & Local Network)
+    # Izinkan pula crawler resmi media sosial (WhatsApp, Facebook, Twitter, Telegram, dll)
     # ----------------------------------------------------------------------
+    RewriteCond %{REQUEST_URI} ^/storage/ [NC]
+    RewriteCond %{HTTP_USER_AGENT} (facebookexternalhit|WhatsApp|Twitterbot|TelegramBot|Slackbot|Discordbot|LinkedInBot|Google-InspectionTool|bingbot) [NC]
+    RewriteRule ^ - [L]
+
     RewriteCond %{REQUEST_URI} ^/storage/ [NC]
     RewriteCond %{HTTP_REFERER} !^https?://(www\.)?ayohadir\.id [NC]
     RewriteCond %{HTTP_REFERER} !^https?://api\.ayohadir\.id [NC]

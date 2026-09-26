@@ -12,6 +12,8 @@ Route::get('/og/template/{slug}', [\App\Http\Controllers\Api\PublicOgController:
 Route::get('/og/{slug}', [\App\Http\Controllers\Api\PublicOgController::class, 'weddingOg']);
 Route::get('/public/og/template/{slug}', [\App\Http\Controllers\Api\PublicOgController::class, 'templateOg']);
 Route::get('/public/og/{slug}', [\App\Http\Controllers\Api\PublicOgController::class, 'weddingOg']);
+Route::get('/og-image/{slug}', [\App\Http\Controllers\Api\PublicOgController::class, 'renderWeddingOgImage']);
+Route::get('/public/og-image/{slug}', [\App\Http\Controllers\Api\PublicOgController::class, 'renderWeddingOgImage']);
 
 // Storage static asset streaming with CORS support
 Route::get('/storage/{path}', function ($path) {
