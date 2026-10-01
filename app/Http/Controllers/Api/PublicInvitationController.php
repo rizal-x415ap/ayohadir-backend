@@ -216,15 +216,19 @@ class PublicInvitationController extends Controller
             }
         }
 
+        $isRegisteredGuest = (bool) ($guestData && !empty($guestData['isRegistered']));
+
         $hasSubmittedFromDevice = false;
-        if ($wedding && !$guestToken) {
+        if ($wedding && !$isRegisteredGuest) {
             $ip = $request->ip() ?? '127.0.0.1';
             $hasSubmittedFromDevice = Cache::has("public_rsvp:{$wedding->id}:" . md5($ip));
+        } elseif ($isRegisteredGuest) {
+            $hasSubmittedFromDevice = (bool) ($guestData['hasSubmittedFromDevice'] ?? false);
         }
 
         $responseData = is_array($snapshot) ? $snapshot : [];
         $responseData['guest'] = $guestData;
-        $responseData['hasRsvp'] = $hasRsvp || $hasSubmittedFromDevice;
+        $responseData['hasRsvp'] = $isRegisteredGuest ? $hasRsvp : $hasSubmittedFromDevice;
         $responseData['hasSubmittedFromDevice'] = $hasSubmittedFromDevice;
         $responseData['wishes'] = $wishes;
         $responseData['protection'] = [

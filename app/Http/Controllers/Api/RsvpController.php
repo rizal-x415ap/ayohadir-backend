@@ -253,20 +253,7 @@ class RsvpController extends Controller
                 $invitation->save();
             }
         } else {
-            // Skenario B: Pengunjung Publik (Belum masuk daftar tamu)
-            $ip = $request->ip() ?? '127.0.0.1';
-            $cacheKey = "public_rsvp:{$wedding->id}:" . md5($ip);
-
-            // Aturan 1 Kali Konfirmasi Publik: Dibatasi per perangkat/IP
-            if (Cache::has($cacheKey)) {
-                return response()->json([
-                    'error' => [
-                        'code' => 'ALREADY_SUBMITTED_FROM_DEVICE',
-                        'message' => 'Konfirmasi kehadiran telah dikirim dari perangkat/jaringan ini.',
-                    ],
-                ], 422);
-            }
-
+            // Skenario B: Pengunjung Publik atau Tamu Terdaftar tanpa Token
             $name = trim((string) $request->input('name'));
             if (empty($name)) {
                 return response()->json([
@@ -279,6 +266,8 @@ class RsvpController extends Controller
 
             // Cek apakah tamu dengan nama ini sudah ada di daftar tamu pemilik undangan
             $matchedGuest = $wedding->guests()->where('name', $name)->first();
+            $cacheKey = null;
+
             if ($matchedGuest) {
                 $guest = $matchedGuest;
                 $invitation = $guest->invitation;
@@ -306,6 +295,20 @@ class RsvpController extends Controller
                     }
                 }
             } else {
+                // Pengunjung publik murni (tidak ada di daftar tamu)
+                $ip = $request->ip() ?? '127.0.0.1';
+                $cacheKey = "public_rsvp:{$wedding->id}:" . md5($ip);
+
+                // Aturan 1 Kali Konfirmasi Publik: Dibatasi per perangkat/IP
+                if (Cache::has($cacheKey)) {
+                    return response()->json([
+                        'error' => [
+                            'code' => 'ALREADY_SUBMITTED_FROM_DEVICE',
+                            'message' => 'Konfirmasi kehadiran telah dikirim dari perangkat/jaringan ini.',
+                        ],
+                    ], 422);
+                }
+
                 // Buat data tamu baru di database
                 $guest = Guest::create([
                     'wedding_id' => $wedding->id,
@@ -344,8 +347,10 @@ class RsvpController extends Controller
                 'responded_at' => now(),
             ]);
 
-            // Tandai perangkat/IP ini telah mengirim RSVP untuk acara ini selama 30 hari
-            Cache::put($cacheKey, true, now()->addDays(30));
+            // Tandai perangkat/IP ini telah mengirim RSVP publik untuk acara ini jika pengunjung publik
+            if ($cacheKey) {
+                Cache::put($cacheKey, true, now()->addDays(30));
+            }
         }
 
         $this->notifyRsvpEvent(

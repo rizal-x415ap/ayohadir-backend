@@ -490,4 +490,66 @@ class RsvpTest extends TestCase
             ->deleteJson("/api/v1/weddings/{$wedding->id}/rsvps/{$rsvp->id}");
         $res2->assertStatus(403);
     }
+
+    public function test_registered_guest_can_rsvp_via_to_param_even_after_public_rsvp_from_same_ip(): void
+    {
+        $user = User::factory()->create();
+        $wedding = Wedding::factory()->create([
+            'user_id' => $user->id,
+            'slug' => 'cross-rsvp-test',
+            'status' => 'published',
+            'rsvp_enabled' => true,
+        ]);
+        $wedding->design()->create([
+            'schema_version' => 1,
+            'schema' => ['sections' => []],
+            'published_schema' => ['sections' => []],
+            'version' => 1,
+        ]);
+
+        $registeredGuest = Guest::create([
+            'wedding_id' => $wedding->id,
+            'name' => 'Budi Santoso',
+            'max_attendees' => 2,
+        ]);
+        $invitation = Invitation::create([
+            'wedding_id' => $wedding->id,
+            'guest_id' => $registeredGuest->id,
+            'token' => 'budi-token-xyz',
+        ]);
+
+        $sharedIp = ['REMOTE_ADDR' => '203.0.113.88'];
+
+        // 1. Someone submits public RSVP from shared IP
+        $publicRes = $this->withServerVariables($sharedIp)
+            ->postJson('/api/v1/public/invitations/cross-rsvp-test/rsvp', [
+                'name' => 'Orang Asing',
+                'attending' => true,
+                'attendee_count' => 1,
+                'wishes' => 'Selamat ya!',
+            ]);
+        $publicRes->assertStatus(200);
+
+        // 2. Budi Santoso opens invitation via ?to=Budi+Santoso from the SAME IP
+        $inviteRes = $this->withServerVariables($sharedIp)
+            ->getJson('/api/v1/public/invitations/cross-rsvp-test?to=' . urlencode('Budi Santoso'));
+
+        $inviteRes->assertStatus(200)
+            ->assertJsonPath('data.guest.name', 'Budi Santoso')
+            ->assertJsonPath('data.guest.isRegistered', true)
+            ->assertJsonPath('data.hasRsvp', false)
+            ->assertJsonPath('data.hasSubmittedFromDevice', false);
+
+        // 3. Budi Santoso submits RSVP
+        $budiRsvpRes = $this->withServerVariables($sharedIp)
+            ->postJson('/api/v1/public/invitations/cross-rsvp-test/rsvp', [
+                'token' => $invitation->token,
+                'name' => 'Budi Santoso',
+                'attending' => true,
+                'attendee_count' => 2,
+                'wishes' => 'Dari Budi untuk pengantin!',
+            ]);
+        $budiRsvpRes->assertStatus(200);
+    }
 }
+
