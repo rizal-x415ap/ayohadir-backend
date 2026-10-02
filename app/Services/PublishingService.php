@@ -28,10 +28,6 @@ class PublishingService
             $errors['wedding_date'] = ['Tanggal pernikahan wajib diisi sebelum publikasi.'];
         }
 
-        if (empty(trim($wedding->venue_name ?? ''))) {
-            $errors['venue_name'] = ['Nama lokasi/gedung pernikahan wajib diisi sebelum publikasi.'];
-        }
-
         if (empty(trim($wedding->slug ?? ''))) {
             $errors['slug'] = ['URL undangan (slug) wajib diatur sebelum publikasi.'];
         }

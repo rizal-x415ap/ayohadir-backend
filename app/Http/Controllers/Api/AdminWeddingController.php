@@ -141,10 +141,6 @@ class AdminWeddingController extends Controller
             $this->publishingService->unpublish($wedding);
             $newStatus = 'draft';
         } else {
-            if (empty(trim($wedding->venue_name ?? ''))) {
-                $wedding->venue_name = 'Tempat Acara';
-                $wedding->save();
-            }
             $this->publishingService->publish($wedding);
             $newStatus = 'published';
         }

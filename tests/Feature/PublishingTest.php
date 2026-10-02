@@ -71,6 +71,29 @@ class PublishingTest extends TestCase
         ]);
     }
 
+    public function test_owner_can_publish_wedding_without_venue_name(): void
+    {
+        $user = User::factory()->create();
+        $wedding = Wedding::factory()->create([
+            'user_id' => $user->id,
+            'bride_name' => 'Siti Aminah',
+            'groom_name' => 'Ahmad Dahlan',
+            'wedding_date' => '2026-11-11',
+            'venue_name' => null,
+            'slug' => 'siti-dan-ahmad',
+            'status' => 'draft',
+        ]);
+
+        $valRes = $this->actingAs($user)->postJson('/api/v1/weddings/' . $wedding->id . '/validate');
+        $valRes->assertStatus(200)
+            ->assertJsonPath('data.canPublish', true)
+            ->assertJsonMissingPath('data.errors.venue_name');
+
+        $pubRes = $this->actingAs($user)->postJson('/api/v1/weddings/' . $wedding->id . '/publish');
+        $pubRes->assertStatus(200)
+            ->assertJsonPath('data.status', 'published');
+    }
+
     public function test_user_cannot_publish_other_users_wedding_idor(): void
     {
         $user1 = User::factory()->create();
