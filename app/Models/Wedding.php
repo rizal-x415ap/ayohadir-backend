@@ -19,6 +19,7 @@ class Wedding extends Model
     protected $fillable = [
         'user_id',
         'slug',
+        'guest_manager_token',
         'bride_name',
         'groom_name',
         'bride_parents',
@@ -77,6 +78,34 @@ class Wedding extends Model
             'rsvp_notification_enabled' => 'boolean',
             'published_at' => 'datetime',
         ];
+    }
+
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Wedding $wedding) {
+            if (empty($wedding->guest_manager_token)) {
+                $wedding->guest_manager_token = static::generateUniqueGuestManagerToken();
+            }
+        });
+    }
+
+    public static function generateUniqueGuestManagerToken(): string
+    {
+        do {
+            $token = \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(16));
+        } while (static::where('guest_manager_token', $token)->exists());
+
+        return $token;
+    }
+
+    public function regenerateGuestManagerToken(): string
+    {
+        $this->guest_manager_token = static::generateUniqueGuestManagerToken();
+        $this->save();
+        return $this->guest_manager_token;
     }
 
     /**

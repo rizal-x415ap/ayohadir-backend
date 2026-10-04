@@ -294,4 +294,20 @@ class GuestController extends Controller
             'template' => $customContent['whatsapp_template'],
         ]);
     }
+
+    /**
+     * Regenerate public guest manager token.
+     */
+    public function regenerateGuestManagerToken(Request $request, Wedding $wedding): JsonResponse
+    {
+        $this->authorize('update', $wedding);
+
+        $newToken = $wedding->regenerateGuestManagerToken();
+
+        return response()->json([
+            'message' => 'Tautan kelola tamu publik berhasil diperbarui.',
+            'guestManagerToken' => $newToken,
+            'guest_manager_token' => $newToken,
+        ]);
+    }
 }

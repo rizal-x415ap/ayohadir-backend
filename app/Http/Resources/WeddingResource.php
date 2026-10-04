@@ -22,6 +22,8 @@ class WeddingResource extends JsonResource
             'userId' => $this->user_id,
             'appliedTemplateId' => $this->applied_template_id,
             'slug' => $this->slug,
+            'guestManagerToken' => $this->guest_manager_token,
+            'guest_manager_token' => $this->guest_manager_token,
             'brideName' => $this->bride_name,
             'groomName' => $this->groom_name,
             'brideParents' => $this->bride_parents,

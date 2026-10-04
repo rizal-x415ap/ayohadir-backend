@@ -48,6 +48,27 @@ Route::prefix('v1')->group(function () {
         Route::get('/svg-content', [\App\Http\Controllers\Api\PublicSvgController::class, 'show']);
         Route::get('/media-stream', [\App\Http\Controllers\Api\PublicMediaStreamController::class, 'stream']);
         Route::get('/og-image/{slug}', [\App\Http\Controllers\Api\PublicOgController::class, 'renderWeddingOgImage']);
+
+        // Public Guest Manager (Buku Tamu Tanpa Login)
+        Route::prefix('buku-tamu/{token}')->middleware('throttle:60,1')->group(function () {
+            Route::get('/info', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'info']);
+            Route::get('/guests', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'getGuests']);
+            Route::post('/guests', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'storeGuest']);
+            Route::put('/guests/{guest}', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'updateGuest']);
+            Route::delete('/guests/{guest}', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'destroyGuest']);
+            Route::post('/guests/batch', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'batchStoreGuests']);
+            Route::patch('/guests/{guest}/mark-wa-sent', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'markWhatsAppSent']);
+            Route::get('/groups', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'getGroups']);
+            Route::post('/groups', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'storeGroup']);
+            Route::put('/groups/{group}', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'updateGroup']);
+            Route::delete('/groups/{group}', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'destroyGroup']);
+            Route::get('/rsvps', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'getRsvps']);
+            Route::delete('/rsvps/{rsvp}', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'destroyRsvp']);
+            Route::delete('/rsvps/{rsvp}/wishes', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'destroyWish']);
+            Route::post('/rsvps/{rsvp}/toggle-approval', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'toggleWishApproval']);
+            Route::get('/whatsapp-template', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'getWhatsAppTemplate']);
+            Route::post('/whatsapp-template', [\App\Http\Controllers\Api\PublicGuestManagerController::class, 'saveWhatsAppTemplate']);
+        });
     });
 
     // Webhook Callback for Duitku Payment Gateway (Public, Unauthenticated, Excluded from CSRF)
@@ -97,6 +118,7 @@ Route::prefix('v1')->group(function () {
         Route::patch('/weddings/{wedding}/guests/{guest}/mark-wa-sent', [\App\Http\Controllers\Api\GuestController::class, 'markWhatsAppSent']);
         Route::get('/weddings/{wedding}/whatsapp-template', [\App\Http\Controllers\Api\GuestController::class, 'getWhatsAppTemplate']);
         Route::post('/weddings/{wedding}/whatsapp-template', [\App\Http\Controllers\Api\GuestController::class, 'saveWhatsAppTemplate']);
+        Route::post('/weddings/{wedding}/regenerate-guest-token', [\App\Http\Controllers\Api\GuestController::class, 'regenerateGuestManagerToken']);
 
         // RSVP & Analytics Management API
         Route::get('/weddings/{wedding}/rsvps', [\App\Http\Controllers\Api\RsvpController::class, 'index']);
